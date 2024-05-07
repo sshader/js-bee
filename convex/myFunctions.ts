@@ -1,75 +1,262 @@
 import { v } from "convex/values";
-import { query, mutation, action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { query, mutation, action, internalMutation } from "./_generated/server";
+import { api, internal } from "./_generated/api";
+import { Doc, Id } from "./_generated/dataModel";
+import { paginationOptsValidator } from "convex/server";
 
-// Write your Convex functions in any file inside this directory (`convex`).
-// See https://docs.convex.dev/functions for more.
-
-// You can read data from the database via a query:
-export const listNumbers = query({
-  // Validators for arguments.
-  args: {
-    count: v.number(),
-  },
-
-  // Query implementation.
-  handler: async (ctx, args) => {
-    //// Read the database as many times as you need here.
-    //// See https://docs.convex.dev/database/reading-data.
-    const numbers = await ctx.db
-      .query("numbers")
-      // Ordered by _creationTime, return most recent
-      .order("desc")
-      .take(args.count);
-    return numbers.toReversed().map((number) => number.value);
+export const ongoingGames = query({
+  args: {},
+  handler: async (ctx, _args) => {
+    const allGames = await ctx.db.query("game").collect();
+    return allGames.filter((g) => g.phase.status !== "Done");
   },
 });
 
-// You can write data to the database via a mutation:
-export const addNumber = mutation({
-  // Validators for arguments.
+export const startGame = mutation({
   args: {
-    value: v.number(),
+    playerId: v.id("player"),
+    problemId: v.optional(v.id("problem")),
   },
-
-  // Mutation implementation.
   handler: async (ctx, args) => {
-    //// Insert or modify documents in the database here.
-    //// Mutations can also read from the database like queries.
-    //// See https://docs.convex.dev/database/writing-data.
-
-    const id = await ctx.db.insert("numbers", { value: args.value });
-
-    console.log("Added new document with id:", id);
-    // Optionally, return a value from your mutation.
-    // return id;
-  },
-});
-
-// You can fetch data from and send data to third-party APIs via an action:
-export const myAction = action({
-  // Validators for arguments.
-  args: {
-    first: v.number(),
-    second: v.string(),
-  },
-
-  // Action implementation.
-  handler: async (ctx, args) => {
-    //// Use the browser-like `fetch` API to send HTTP requests.
-    //// See https://docs.convex.dev/functions/actions#calling-third-party-apis-and-using-npm-packages.
-    // const response = await ctx.fetch("https://api.thirdpartyservice.com");
-    // const data = await response.json();
-
-    //// Query data by running Convex queries.
-    const data = await ctx.runQuery(api.myFunctions.listNumbers, {
-      count: 10,
+    const problem = args.problemId
+      ? await ctx.db.get(args.problemId)
+      : await ctx.db.query("problem").first();
+    const gameId = await ctx.db.insert("game", {
+      problemId: problem!._id,
+      player1: args.playerId,
+      player2: null,
+      phase: { status: "NotStarted" },
     });
-    console.log(data);
+    return gameId;
+  },
+});
 
-    //// Write data by running Convex mutations.
-    await ctx.runMutation(api.myFunctions.addNumber, {
-      value: args.first,
+export const joinGame = mutation({
+  args: {
+    playerId: v.id("player"),
+    gameId: v.id("game"),
+  },
+  handler: async (ctx, args) => {
+    const game = await ctx.db.get(args.gameId);
+    if (game === null) {
+      throw new Error("Unknown game");
+    }
+    if (game.phase.status !== "NotStarted" || game.player2 !== null) {
+      throw new Error("Game is already started or has two players");
+    }
+    await ctx.db.patch(game._id, {
+      player2: args.playerId,
+      phase: { status: "Inputting" },
+    });
+  },
+});
+
+export const takeTurn = mutation({
+  args: {
+    playerId: v.id("player"),
+    gameId: v.id("game"),
+    input: v.string(),
+  },
+  handler: async (ctx, args) => {
+    console.log(args);
+    const game = await ctx.db.get(args.gameId);
+    if (game === null) {
+      throw new Error("Unknown game");
+    }
+    if (game.phase.status !== "Inputting") {
+      throw new Error("Game isn't in the inputting phase");
+    }
+    const lastInput = await ctx.db
+      .query("inputs")
+      .withIndex("ByGame", (q) => q.eq("gameId", game._id))
+      .order("desc")
+      .first();
+    const isPlayer1Turn = lastInput === null || !lastInput.isPlayer1;
+    if (isPlayer1Turn && game.player1 !== args.playerId) {
+      throw new Error("Not current player's turn");
+    } else if (!isPlayer1Turn && game.player2 !== args.playerId) {
+      throw new Error("Not current player's turn");
+    }
+    if (args.input === "done") {
+      const allInputs = await ctx.db
+        .query("inputs")
+        .withIndex("ByGame", (q) => q.eq("gameId", game._id))
+        .collect();
+      const code = allInputs.map((i) => i.input).join("");
+      await ctx.db.patch(game._id, {
+        phase: {
+          status: "InputDone",
+          code,
+        },
+      });
+      const testCases = (await ctx.db.get(game.problemId))!.testCases;
+      await ctx.scheduler.runAfter(0, internal.executeSolution.execute, {
+        code,
+        testCases,
+        gameId: game._id,
+      });
+      return;
+    }
+    if (args.input === "clear") {
+      const allInputs = await ctx.db
+        .query("inputs")
+        .withIndex("ByGame", (q) => q.eq("gameId", game._id))
+        .collect();
+      await Promise.all(allInputs.map((i) => ctx.db.delete(i._id)));
+    }
+
+    if (args.input.length !== 1) {
+      throw new Error("More than one character!");
+    }
+
+    await ctx.db.insert("inputs", {
+      gameId: game._id,
+      isPlayer1: isPlayer1Turn,
+      input: args.input,
+    });
+  },
+});
+
+export const gameInfo = query({
+  args: {
+    gameId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const normalizedId = ctx.db.normalizeId("game", args.gameId);
+    if (normalizedId === null) {
+      throw new Error("Unknown game");
+    }
+    const game = await ctx.db.get(normalizedId);
+    if (game === null) {
+      throw new Error("Unknown game");
+    }
+    const problem = await ctx.db.get(game.problemId);
+    if (problem === null) {
+      throw new Error("Unknown problem");
+    }
+    const player1 =
+      game.player1 !== null ? await ctx.db.get(game.player1) : null;
+    const player2 =
+      game.player2 !== null ? await ctx.db.get(game.player2) : null;
+    return {
+      game,
+      player1,
+      player2,
+      prompt: problem.prompt,
+    };
+  },
+});
+
+export const watchGameWhilePlaying = query({
+  args: {
+    playerId: v.id("player"),
+    gameId: v.id("game"),
+  },
+  handler: async (ctx, args) => {
+    const game = await ctx.db.get(args.gameId);
+    if (game === null) {
+      throw new Error("Unknown game");
+    }
+    const isPlaying =
+      game.player1 === args.playerId || game.player2 === args.playerId;
+    if (!isPlaying) {
+      throw new Error("Current player is not playing");
+    }
+    const lastInputs = await ctx.db
+      .query("inputs")
+      .withIndex("ByGame", (q) => q.eq("gameId", game._id))
+      .order("desc")
+      .take(2);
+    const lastInput = lastInputs[0] ?? null;
+    const isPlayer1Turn = lastInput === null || !lastInput.isPlayer1;
+    const isPlayer1 = game.player1 === args.playerId;
+    // yes, there's a more compact way to say this, but this makes sense to me in english
+    const isCurrentPlayersTurn =
+      (isPlayer1 && isPlayer1Turn) || (!isPlayer1 && !isPlayer1Turn);
+    const lastPartnerInput =
+      lastInputs.find((i) => i.isPlayer1 !== isPlayer1)?.input ?? null;
+    return {
+      isCurrentPlayersTurn,
+      lastPartnerInput,
+    };
+  },
+});
+
+export const spectateGameInputs = query({
+  args: {
+    playerId: v.id("player"),
+    gameId: v.id("game"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const game = await ctx.db.get(args.gameId);
+    if (game === null) {
+      throw new Error("Unknown game");
+    }
+    if (game.player1 === args.playerId || game.player2 === args.playerId) {
+      throw new Error("Game player cannot spectate");
+    }
+
+    return ctx.db
+      .query("inputs")
+      .withIndex("ByGame", (q) => q.eq("gameId", args.gameId))
+      .paginate(args.paginationOpts);
+  },
+});
+
+export const getOrCreatePlayer = mutation({
+  args: { sessionId: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("player")
+      .withIndex("BySession", (q) => q.eq("sessionId", args.sessionId))
+      .unique();
+    if (existing !== null) {
+      return existing._id;
+    }
+    const newPlayerId = await ctx.db.insert("player", {
+      sessionId: args.sessionId,
+      name: args.sessionId,
+    });
+    return newPlayerId;
+  },
+});
+
+export const getPlayer = query({
+  args: {
+    playerId: v.id("player"),
+  },
+  handler: async (ctx, args) => {
+    const player = await ctx.db.get(args.playerId);
+    if (player === null) {
+      throw new Error("Unknown player");
+    }
+    return player;
+  },
+});
+
+export const recordState = internalMutation({
+  args: {
+    gameId: v.id("game"),
+    testCaseResults: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const game = await ctx.db.get(args.gameId);
+    if (game === null) {
+      throw new Error("Unknown game");
+    }
+    if (game.phase.status === "Done") {
+      return;
+    }
+    if (game.phase.status !== "InputDone") {
+      throw new Error("Phase incorrect");
+    }
+    await ctx.db.patch(args.gameId, {
+      phase: {
+        status: "Done",
+        code: game.phase.code,
+        result: args.testCaseResults,
+      },
     });
   },
 });

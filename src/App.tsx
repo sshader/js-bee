@@ -1,56 +1,99 @@
 import { Button } from "@/components/ui/button";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { Link } from "@/components/typography/link";
+import { useNavigate } from "react-router-dom";
+import { useCurrentPlayer } from "./lib/PlayerProvider";
 
 function App() {
-  const numbers = useQuery(api.myFunctions.listNumbers, { count: 10 });
-  const addNumber = useMutation(api.myFunctions.addNumber);
+  const ongoingGames = useQuery(api.myFunctions.ongoingGames) ?? [];
+  const joinGame = useMutation(api.myFunctions.joinGame);
+  const startGame = useMutation(api.myFunctions.startGame);
+  const problems = useQuery(api.problems.list) ?? [];
+  const createProblem = useMutation(api.problems.create);
+  const navigate = useNavigate();
+
+  const player = useCurrentPlayer();
 
   return (
     <main className="container max-w-2xl flex flex-col gap-8">
-      <h1 className="text-4xl font-extrabold my-8 text-center">
-        Convex + React (Vite)
-      </h1>
-      <p>
-        Click the button and open this page in another window - this data is
-        persisted in the Convex cloud database!
-      </p>
-      <p>
+      <h1>JS Bee</h1>
+      <div>{player === undefined ? "Loading..." : player.name}</div>
+      <div>
+        <h2>Ongoing Games</h2>
+        <div className="flex flex-col">
+          {...ongoingGames.map((g) => {
+            const needsPlayer = g.player2 === null;
+            if (needsPlayer) {
+              return (
+                <div key={g._id}>
+                  <Button
+                    onClick={() => {
+                      const f = async () => {
+                        await joinGame({
+                          playerId: player._id,
+                          gameId: g._id,
+                        });
+                        navigate(`/games/${g._id}`);
+                      };
+                      void f();
+                    }}
+                  >{`Join`}</Button>
+                </div>
+              );
+            } else {
+              return (
+                <Button
+                  key={g._id}
+                  onClick={() => {
+                    navigate(`/games/${g._id}`);
+                  }}
+                >
+                  Watch
+                </Button>
+              );
+            }
+          })}
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-md">Problems</h2>
+        {...problems.map((p) => {
+          return (
+            <div className="flex gap-2 items-center" key={p._id}>
+              <div className="border-solid border-2 rounded-sm border-slate-500 p-2">
+                {p.summary ?? p.prompt.substring(0, 50)}
+              </div>
+              <Button
+                onClick={() => {
+                  const f = async () => {
+                    const gameId = await startGame({ playerId: player._id });
+                    navigate(`/games/${gameId}`);
+                  };
+                  void f();
+                }}
+              >
+                Start new game
+              </Button>
+            </div>
+          );
+        })}
         <Button
           onClick={() => {
-            void addNumber({ value: Math.floor(Math.random() * 10) });
+            const f = async () => {
+              const problem = await createProblem({
+                prompt:
+                  "// Explain your problem here and give an example\nsolution({ a: 1, b: 2 }) // 3",
+                testCases: [{ args: { a: 1, b: 2 }, expected: 3 }],
+              });
+              navigate(`/problems/${problem._id}`);
+            };
+            void f();
           }}
         >
-          Add a random number
+          New problem
         </Button>
-      </p>
-      <p>
-        Numbers:{" "}
-        {numbers?.length === 0
-          ? "Click the button!"
-          : numbers?.join(", ") ?? "..."}
-      </p>
-      <p>
-        Edit{" "}
-        <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
-          convex/myFunctions.ts
-        </code>{" "}
-        to change your backend
-      </p>
-      <p>
-        Edit{" "}
-        <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
-          src/App.tsx
-        </code>{" "}
-        to change your frontend
-      </p>
-      <p>
-        Check out{" "}
-        <Link target="_blank" href="https://docs.convex.dev/home">
-          Convex docs
-        </Link>
-      </p>
+      </div>
     </main>
   );
 }
