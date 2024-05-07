@@ -188,5 +188,5 @@ function SpectatingGame({
       />
     </div>
   );
-}
+} // hi
 export default Game;
