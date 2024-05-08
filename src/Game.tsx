@@ -6,13 +6,15 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { CodeBlock, dracula } from "react-code-blocks";
 import { useCurrentPlayer } from "./lib/PlayerProvider";
+import { Button } from "./components/ui/button";
 
 const makeCodeBlock = (body: string) => {
-  return `const solution = (a) => {\n\t${body}\n}`;
+  return `function solution(a) {\n\t${body}\n}`;
 };
 
 function Game() {
   const player = useCurrentPlayer();
+  const joinGame = useMutation(api.myFunctions.joinGame);
 
   const { gameId } = useParams();
   const gameInfo = useQuery(api.myFunctions.gameInfo, { gameId: gameId! });
@@ -26,36 +28,49 @@ function Game() {
           {`Player 1: ${gameInfo.player1!.name} ${player._id === gameInfo.player1?._id ? "(You)" : ""}`}
         </div>
         <div>
-          {gameInfo.player2 === null
-            ? "Waiting for another player..."
-            : `Player 2: ${gameInfo.player2.name} ${player._id === gameInfo.player2._id ? "(You)" : ""}`}
+          {gameInfo.player2 !== null ? (
+            `Player 2: ${gameInfo.player2.name} ${player._id === gameInfo.player2._id ? "(You)" : ""}`
+          ) : player._id === gameInfo.player1?._id ? (
+            "Waiting for another player..."
+          ) : (
+            <Button
+              onClick={() => {
+                void joinGame({
+                  gameId: gameInfo.game._id,
+                  playerId: player._id,
+                });
+              }}
+            >
+              Join game
+            </Button>
+          )}
         </div>
       </div>
       <h1>Instructions:</h1>
       <div>
-        This is a "JavaScript Bee". Two people take turns coding out a solution
-        one character at a time. In Type "done" on your turn to finish the
-        solution, type "clear" to start from scratch.
+        <p>
+          This is a "JavaScript Bee". Two people take turns coding out a
+          solution one character at a time.
+        </p>
+        <div>
+          Special commands:
+          <ul>
+            <li>Type "done" on your turn to finish the solution</li>
+            <li>Type "clear" to clear the last line.</li>
+          </ul>
+        </div>
       </div>
       <div>
         <h2>Prompt</h2>
-        <CodeBlock
-          text={gameInfo.prompt}
-          language={"js"}
-          showLineNumbers={false}
-          theme={dracula}
-        />
-      </div>
-      {gameInfo.game.phase.status === "NotStarted" ? (
         <div style={{ fontFamily: "monospace" }}>
           <CodeBlock
-            text={makeCodeBlock("// your code here")}
+            text={`${gameInfo.prompt}\n\n${makeCodeBlock("// your code here")}`}
             language={"js"}
             showLineNumbers={false}
             theme={dracula}
           />
         </div>
-      ) : null}
+      </div>
 
       {renderResult(gameInfo.game)}
     </div>
@@ -135,7 +150,7 @@ function PlayingGame({
     return "";
   }
   return (
-    <div>
+    <div className="text-xl">
       <div>
         {isCurrentPlayersTurn ? `Your turn!` : `Waiting on other player!`}
       </div>

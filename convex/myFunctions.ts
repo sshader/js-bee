@@ -1,5 +1,11 @@
 import { v } from "convex/values";
-import { query, mutation, action, internalMutation } from "./_generated/server";
+import {
+  query,
+  mutation,
+  action,
+  internalMutation,
+  MutationCtx,
+} from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 import { paginationOptsValidator } from "convex/server";
@@ -58,64 +64,104 @@ export const takeTurn = mutation({
     input: v.string(),
   },
   handler: async (ctx, args) => {
-    console.log(args);
     const game = await ctx.db.get(args.gameId);
     if (game === null) {
       throw new Error("Unknown game");
     }
-    if (game.phase.status !== "Inputting") {
-      throw new Error("Game isn't in the inputting phase");
-    }
-    const lastInput = await ctx.db
-      .query("inputs")
-      .withIndex("ByGame", (q) => q.eq("gameId", game._id))
-      .order("desc")
-      .first();
-    const isPlayer1Turn = lastInput === null || !lastInput.isPlayer1;
-    if (isPlayer1Turn && game.player1 !== args.playerId) {
-      throw new Error("Not current player's turn");
-    } else if (!isPlayer1Turn && game.player2 !== args.playerId) {
-      throw new Error("Not current player's turn");
-    }
-    if (args.input === "done") {
-      const allInputs = await ctx.db
-        .query("inputs")
-        .withIndex("ByGame", (q) => q.eq("gameId", game._id))
-        .collect();
-      const code = allInputs.map((i) => i.input).join("");
-      await ctx.db.patch(game._id, {
-        phase: {
-          status: "InputDone",
-          code,
-        },
-      });
-      const testCases = (await ctx.db.get(game.problemId))!.testCases;
-      await ctx.scheduler.runAfter(0, internal.executeSolution.execute, {
-        code,
-        testCases,
-        gameId: game._id,
-      });
+    const nextPlayerId = await handleTurn(ctx, game, args.playerId, args.input);
+    if (nextPlayerId === null) {
       return;
     }
-    if (args.input === "clear") {
-      const allInputs = await ctx.db
-        .query("inputs")
-        .withIndex("ByGame", (q) => q.eq("gameId", game._id))
-        .collect();
-      await Promise.all(allInputs.map((i) => ctx.db.delete(i._id)));
+    const nextPlayer = await ctx.db.get(nextPlayerId);
+    if (nextPlayer?.name === "ChatGPT") {
+      await ctx.scheduler.runAfter(0, internal.openai.takeTurn, {
+        gameId: game._id,
+      });
     }
+  },
+});
 
-    if (args.input.length !== 1) {
-      throw new Error("More than one character!");
+export async function handleTurn(
+  ctx: MutationCtx,
+  game: Doc<"game">,
+  playerId: Id<"player">,
+  input: string
+) {
+  if (game.phase.status !== "Inputting") {
+    throw new Error("Game isn't in the inputting phase");
+  }
+  const lastInput = await ctx.db
+    .query("inputs")
+    .withIndex("ByGame", (q) => q.eq("gameId", game._id))
+    .order("desc")
+    .first();
+  const isPlayer1Turn = lastInput === null || !lastInput.isPlayer1;
+  if (isPlayer1Turn && game.player1 !== playerId) {
+    throw new Error("Not current player's turn");
+  } else if (!isPlayer1Turn && game.player2 !== playerId) {
+    throw new Error("Not current player's turn");
+  }
+  if (input === "done") {
+    const allInputs = await ctx.db
+      .query("inputs")
+      .withIndex("ByGame", (q) => q.eq("gameId", game._id))
+      .collect();
+    const code = allInputs.map((i) => i.input).join("");
+    await ctx.db.patch(game._id, {
+      phase: {
+        status: "InputDone",
+        code,
+      },
+    });
+    const testCases = (await ctx.db.get(game.problemId))!.testCases;
+    await ctx.scheduler.runAfter(0, internal.executeSolution.execute, {
+      code,
+      testCases,
+      gameId: game._id,
+    });
+    return null;
+  }
+  if (input === "clear") {
+    const inputs = ctx.db
+      .query("inputs")
+      .withIndex("ByGame", (q) => q.eq("gameId", game._id))
+      .order("desc");
+    for await (const i of inputs) {
+      if (i.input === "\n") {
+        return i.isPlayer1 ? game.player2 : game.player1;
+      }
+      await ctx.db.delete(i._id);
     }
-
+    return game.player1;
+  }
+  if (input === "\\n") {
     await ctx.db.insert("inputs", {
       gameId: game._id,
       isPlayer1: isPlayer1Turn,
-      input: args.input,
+      input: "\n",
     });
-  },
-});
+    return isPlayer1Turn ? game.player2 : game.player1;
+  }
+  if (input === "\\t") {
+    await ctx.db.insert("inputs", {
+      gameId: game._id,
+      isPlayer1: isPlayer1Turn,
+      input: "\t",
+    });
+    return isPlayer1Turn ? game.player2 : game.player1;
+  }
+
+  if (input.length !== 1) {
+    throw new Error("More than one character!");
+  }
+
+  await ctx.db.insert("inputs", {
+    gameId: game._id,
+    isPlayer1: isPlayer1Turn,
+    input: input,
+  });
+  return isPlayer1Turn ? game.player2 : game.player1;
+}
 
 export const gameInfo = query({
   args: {
@@ -232,6 +278,16 @@ export const getPlayer = query({
       throw new Error("Unknown player");
     }
     return player;
+  },
+});
+
+export const updatePlayer = mutation({
+  args: {
+    playerId: v.id("player"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.playerId, { name: args.name });
   },
 });
 

@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useNavigate } from "react-router-dom";
 import { useCurrentPlayer } from "./lib/PlayerProvider";
+import Player from "./Player";
 
 function App() {
   const ongoingGames = useQuery(api.myFunctions.ongoingGames) ?? [];
@@ -17,7 +18,7 @@ function App() {
   return (
     <main className="container max-w-2xl flex flex-col gap-8">
       <h1>JS Bee</h1>
-      <div>{player === undefined ? "Loading..." : player.name}</div>
+      <Player />
       <div>
         <h2>Ongoing Games</h2>
         <div className="flex flex-col">
@@ -67,7 +68,10 @@ function App() {
               <Button
                 onClick={() => {
                   const f = async () => {
-                    const gameId = await startGame({ playerId: player._id });
+                    const gameId = await startGame({
+                      playerId: player._id,
+                      problemId: p._id,
+                    });
                     navigate(`/games/${gameId}`);
                   };
                   void f();

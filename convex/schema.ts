@@ -62,4 +62,9 @@ export default defineSchema({
     name: v.string(),
     sessionId: v.optional(v.string()),
   }).index("BySession", ["sessionId"]),
+  aiAnswers: defineTable({
+    prompt: v.string(),
+    solutionSnippet: v.string(),
+    answer: v.union(v.string(), v.null()),
+  }).index("ByPrompt", ["prompt"]),
 });
