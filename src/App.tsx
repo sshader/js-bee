@@ -44,6 +44,7 @@ function App() {
             } else {
               return (
                 <Button
+                  variant="secondary"
                   key={g._id}
                   onClick={() => {
                     navigate(`/games/${g._id}`);
