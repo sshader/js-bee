@@ -6,7 +6,7 @@ import { api } from "../convex/_generated/api";
 function Player() {
   const player = useCurrentPlayer();
   const [name, setName] = useState(player.name);
-  const updatePlayer = useMutation(api.myFunctions.updatePlayer);
+  const updatePlayer = useMutation(api.players.updatePlayer);
   return (
     <form
       onSubmit={(e) => {
@@ -14,14 +14,17 @@ function Player() {
         void updatePlayer({ name, playerId: player._id });
       }}
     >
-      <label>Name:</label>
       <input
         value={name}
         onChange={(e) => {
           setName(e.target.value);
         }}
       ></input>
-      <input type="submit" value={"Save"} />
+      <input
+        disabled={player.name === name}
+        type="submit"
+        value={player.name === name ? "✅" : "Save"}
+      />
     </form>
   );
 }

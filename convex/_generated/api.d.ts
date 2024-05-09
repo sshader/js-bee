@@ -14,9 +14,10 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
-import type * as executeSolution from "../executeSolution.js";
-import type * as myFunctions from "../myFunctions.js";
+import type * as engine from "../engine.js";
+import type * as games from "../games.js";
 import type * as openai from "../openai.js";
+import type * as players from "../players.js";
 import type * as problems from "../problems.js";
 
 /**
@@ -28,9 +29,10 @@ import type * as problems from "../problems.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  executeSolution: typeof executeSolution;
-  myFunctions: typeof myFunctions;
+  engine: typeof engine;
+  games: typeof games;
   openai: typeof openai;
+  players: typeof players;
   problems: typeof problems;
 }>;
 export declare const api: FilterApi<

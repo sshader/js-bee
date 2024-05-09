@@ -1,20 +1,15 @@
-import {
-  ConvexProvider,
-  ConvexReactClient,
-  useMutation,
-  useQuery,
-} from "convex/react";
-import React, { useContext, useEffect, useState } from "react";
+import { ConvexProvider, ConvexReactClient } from "convex/react";
+import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import Game from "./Game";
 import ProblemEditor from "./ProblemEditor";
+import ErrorPage from "./ErrorPage";
 import "./index.css";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import { SessionProvider, useSessionId } from "convex-helpers/react/sessions";
-import { Doc, Id } from "convex/_generated/dataModel";
-import { api } from "convex/_generated/api";
+import { SessionProvider } from "convex-helpers/react/sessions";
 import { PlayerProvider } from "./lib/PlayerProvider";
+import { ErrorBoundary } from "react-error-boundary";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
@@ -22,14 +17,21 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
+    errorElement: <ErrorPage />,
   },
   {
     path: "games/:gameId",
     element: <Game />,
+    errorElement: <ErrorPage />,
   },
   {
     path: "problems/:problemId",
     element: <ProblemEditor />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: "*",
+    element: <ErrorPage />,
   },
 ]);
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -7,6 +7,12 @@
     <title>Convex + React (Vite)</title>
   </head>
   <body>
+    <script type="module">
+      import { getQuickJS } from "https://esm.sh/quickjs-emscripten@0.25.0";
+      getQuickJS().then((q) => {
+        window.__QuickJS = q;
+      });
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

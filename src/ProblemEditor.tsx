@@ -29,7 +29,7 @@ function Inner({ problem }: { problem: Doc<"problem"> }) {
     JSON.stringify(problem.testCases, null, 2)
   );
   const updateProblem = useMutation(api.problems.update);
-  const startGame = useMutation(api.myFunctions.startGame);
+  const startGame = useMutation(api.games.startGame);
   const navigate = useNavigate();
   return (
     <div className="flex flex-col gap-5">

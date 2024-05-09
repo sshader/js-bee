@@ -54,13 +54,40 @@ export default defineSchema({
   }),
   inputs: defineTable({
     gameId: v.id("game"),
-    isPlayer1: v.boolean(),
-    input: v.string(),
-    deleted: v.optional(v.boolean()),
+    inputs: v.array(
+      v.object({
+        isPlayer1: v.boolean(),
+        operation: v.union(
+          v.object({
+            kind: v.literal("Add"),
+            input: v.string(),
+          }),
+          v.object({
+            kind: v.literal("Delete"),
+            numDeleted: v.optional(v.number()),
+          }),
+          v.object({
+            kind: v.literal("MoveCursor"),
+            newPos: v.number(),
+          }),
+          v.object({
+            kind: v.literal("Finish"),
+          })
+        ),
+      })
+    ),
+    rank: v.number(),
+  }).index("ByGame", ["gameId", "rank"]),
+  code: defineTable({
+    gameId: v.id("game"),
+    code: v.string(),
+    cursorPosition: v.number(),
+    skipBot: v.optional(v.number()),
   }).index("ByGame", ["gameId"]),
   player: defineTable({
     name: v.string(),
     sessionId: v.optional(v.string()),
+    botType: v.optional(v.string()),
   }).index("BySession", ["sessionId"]),
   aiAnswers: defineTable({
     prompt: v.string(),

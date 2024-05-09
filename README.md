@@ -12,3 +12,17 @@ See Convex docs at https://docs.convex.dev/home
 ```
 npm create convex@latest -t react-vite-shadcn
 ```
+
+# TODO
+
+- Full crud UI for deleting problems
+- Games should include player names
+- Make it easier to set player names
+
+- Fix character parsing lol
+- Unify logic for replaying + transforming code
+- Overall better UI lol
+- Copy link button
+- Make everything collapsible
+- Clean up inactive games
+- Better UI for last input vs. waiting

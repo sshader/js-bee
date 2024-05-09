@@ -10,9 +10,9 @@ export const PlayerProvider: React.FC<{
 }> = ({ children }) => {
   const [sessionId] = useSessionId();
   const [playerId, setPlayerId] = useState<Id<"player"> | null>(null);
-  const createPlayer = useMutation(api.myFunctions.getOrCreatePlayer);
+  const createPlayer = useMutation(api.players.getOrCreatePlayer);
   const player = useQuery(
-    api.myFunctions.getPlayer,
+    api.players.getPlayer,
     playerId === null ? "skip" : { playerId }
   );
   useEffect(() => {

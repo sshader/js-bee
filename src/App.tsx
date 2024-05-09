@@ -6,9 +6,9 @@ import { useCurrentPlayer } from "./lib/PlayerProvider";
 import Player from "./Player";
 
 function App() {
-  const ongoingGames = useQuery(api.myFunctions.ongoingGames) ?? [];
-  const joinGame = useMutation(api.myFunctions.joinGame);
-  const startGame = useMutation(api.myFunctions.startGame);
+  const ongoingGames = useQuery(api.games.ongoingGames) ?? [];
+  const joinGame = useMutation(api.games.joinGame);
+  const startGame = useMutation(api.games.startGame);
   const problems = useQuery(api.problems.list) ?? [];
   const createProblem = useMutation(api.problems.create);
   const navigate = useNavigate();
