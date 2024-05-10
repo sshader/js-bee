@@ -3,6 +3,7 @@ import { api } from "../../convex/_generated/api";
 import { Doc, Id } from "../../convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import React, { useContext, useEffect, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const PlayerContext = React.createContext<Doc<"player"> | null>(null);
 export const PlayerProvider: React.FC<{
@@ -26,7 +27,7 @@ export const PlayerProvider: React.FC<{
     void f();
   });
   if (player === undefined) {
-    return "Loading...";
+    return React.createElement(Skeleton);
   }
   return React.createElement(
     PlayerContext.Provider,

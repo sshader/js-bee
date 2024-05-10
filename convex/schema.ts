@@ -82,7 +82,8 @@ export default defineSchema({
     gameId: v.id("game"),
     code: v.string(),
     cursorPosition: v.number(),
-    skipBot: v.optional(v.number()),
+    player1Skips: v.number(),
+    player2Skips: v.number(),
   }).index("ByGame", ["gameId"]),
   player: defineTable({
     name: v.string(),

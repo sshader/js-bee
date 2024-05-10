@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useCurrentPlayer } from "./lib/PlayerProvider";
 import { useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
+import { Input } from "./components/ui/input";
+import { Button } from "./components/ui/button";
 
 function Player() {
   const player = useCurrentPlayer();
@@ -14,17 +16,18 @@ function Player() {
         void updatePlayer({ name, playerId: player._id });
       }}
     >
-      <input
-        value={name}
-        onChange={(e) => {
-          setName(e.target.value);
-        }}
-      ></input>
-      <input
-        disabled={player.name === name}
-        type="submit"
-        value={player.name === name ? "✅" : "Save"}
-      />
+      <div className="flex flex-row gap-2">
+        <Input
+          className="max-w-[20vw]"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+          }}
+        />
+        <Button variant="outline" disabled={player.name === name} type="submit">
+          {player.name === name ? "✅" : "Save"}
+        </Button>
+      </div>
     </form>
   );
 }

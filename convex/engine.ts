@@ -19,15 +19,18 @@ export const takeTurn = mutation({
       return;
     }
     const nextPlayer = await ctx.db.get(nextPlayerId);
+    const codeDoc = (await ctx.db
+      .query("code")
+      .withIndex("ByGame", (q) => q.eq("gameId", game._id))
+      .unique())!;
+    const shouldSkip =
+      (nextPlayerId === game.player1 && codeDoc.player1Skips > 0) ||
+      codeDoc.player2Skips > 0;
+    if (shouldSkip) {
+      await handleTurn(ctx, game, nextPlayerId, "");
+      return;
+    }
     if (nextPlayer?.name === "ChatGPT") {
-      const codeDoc = (await ctx.db
-        .query("code")
-        .withIndex("ByGame", (q) => q.eq("gameId", game._id))
-        .unique())!;
-      if (codeDoc.skipBot && codeDoc.skipBot > 0) {
-        await handleTurn(ctx, game, nextPlayer._id, "skip");
-        return;
-      }
       await ctx.scheduler.runAfter(0, internal.openai.takeTurn, {
         gameId: game._id,
       });
@@ -51,6 +54,7 @@ export async function handleTurn(
   const tail = inputs.at(-1)!;
   const lastInput = tail.inputs.at(-1);
   const isPlayer1Turn = lastInput === undefined || !lastInput.isPlayer1;
+  const nextPlayer = isPlayer1Turn ? game.player2 : game.player1;
   if (isPlayer1Turn && game.player1 !== playerId) {
     throw new Error("Not current player's turn");
   } else if (!isPlayer1Turn && game.player2 !== playerId) {
@@ -86,22 +90,35 @@ export async function handleTurn(
     });
     return isPlayer1Turn ? game.player2 : game.player1;
   }
-  if (input === "pause") {
-    await ctx.db.patch(codeDoc._id, {
-      skipBot: 5,
-    });
-    return isPlayer1Turn ? game.player1 : game.player2;
+  if (input.startsWith("skip")) {
+    const numSkips = parseInt(input.split(" ")[1] ?? "5");
+    await ctx.db.patch(
+      codeDoc._id,
+      isPlayer1Turn
+        ? {
+            player2Skips: numSkips,
+          }
+        : { player1Skips: numSkips }
+    );
+    return nextPlayer;
   }
-  if (input === "skip") {
+  // skip
+  if (input === "") {
     await addInput(ctx, tail, {
       isPlayer1: isPlayer1Turn,
       operation: { kind: "Add", input: "" },
     });
-    await ctx.db.patch(codeDoc._id, {
-      cursorPosition: codeDoc.cursorPosition,
-      skipBot: (codeDoc.skipBot ?? 1) - 1,
-    });
-    return isPlayer1Turn ? game.player2 : game.player1;
+    await ctx.db.patch(
+      codeDoc._id,
+      isPlayer1Turn
+        ? {
+            player1Skips: (codeDoc.player1Skips ?? 1) - 1,
+          }
+        : {
+            player2Skips: (codeDoc.player2Skips ?? 1) - 1,
+          }
+    );
+    return nextPlayer;
   }
   if (input === "clearline") {
     const newCursor = Math.max(codeBeforeCursor.lastIndexOf("\n") - 1, 0);
@@ -127,7 +144,7 @@ export async function handleTurn(
       code: codeBeforeCursor.substring(0, newCursor) + codeAfterCurser,
       cursorPosition: newCursor,
     });
-    return isPlayer1Turn ? game.player2 : game.player1;
+    return nextPlayer;
   }
   let char = input;
   if (input === "\\n") {
@@ -147,7 +164,7 @@ export async function handleTurn(
     code: codeBeforeCursor + char + codeAfterCurser,
     cursorPosition: codeDoc.cursorPosition + 1,
   });
-  return isPlayer1Turn ? game.player2 : game.player1;
+  return nextPlayer;
 }
 
 async function addInput(

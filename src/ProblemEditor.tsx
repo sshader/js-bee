@@ -6,6 +6,11 @@ import { Doc, Id } from "../convex/_generated/dataModel";
 import { CodeBlock } from "react-code-blocks";
 import CodeEditor from "@uiw/react-textarea-code-editor";
 import { useEffect, useState } from "react";
+import { Skeleton } from "./components/ui/skeleton";
+import { SheetTitle } from "./components/ui/sheet";
+import { Label } from "@radix-ui/react-label";
+import { Input } from "./components/ui/input";
+import { Button } from "./components/ui/button";
 
 function ProblemEditor() {
   const { problemId } = useParams();
@@ -13,7 +18,7 @@ function ProblemEditor() {
     id: problemId as Id<"problem">,
   });
   if (problem === undefined) {
-    return "Loading...";
+    return <Skeleton />;
   } else if (problem === null) {
     return "Not found!";
   } else {
@@ -33,7 +38,7 @@ function Inner({ problem }: { problem: Doc<"problem"> }) {
   const navigate = useNavigate();
   return (
     <div className="flex flex-col gap-5">
-      <h1>Add a new problem</h1>
+      <SheetTitle className="text-center">Add a new problem</SheetTitle>
       <form
         className="flex flex-col gap-5"
         onSubmit={(e) => {
@@ -63,9 +68,9 @@ function Inner({ problem }: { problem: Doc<"problem"> }) {
           void f();
         }}
       >
-        <div className="flex gap-2">
-          <label>Title:</label>
-          <input
+        <div className="flex gap-2 items-center">
+          <Label>Title:</Label>
+          <Input
             placeholder="E.g. Add numbers"
             value={summary}
             required
@@ -75,22 +80,17 @@ function Inner({ problem }: { problem: Doc<"problem"> }) {
           />
         </div>
         <div>
-          <h2>Prompt:</h2>
+          <Label>Prompt:</Label>
           <CodeEditor
             value={code}
             language="js"
             onChange={(evn) => setCode(evn.target.value)}
             padding={15}
-            style={{
-              backgroundColor: "#f5f5f5",
-              fontFamily:
-                "ui-monospace,SFMono-Regular,SF Mono,Consolas,Liberation Mono,Menlo,monospace",
-            }}
           />
         </div>
         <div>
-          <h2>Test cases:</h2>
-          <p>
+          <Label>Test cases:</Label>
+          <p className="text-xs">
             Solutions will be scored based on whether they pass these test cases
           </p>
           <CodeEditor
@@ -99,14 +99,11 @@ function Inner({ problem }: { problem: Doc<"problem"> }) {
             placeholder="Please enter JS code."
             onChange={(evn) => setTestCases(evn.target.value)}
             padding={15}
-            style={{
-              backgroundColor: "#f5f5f5",
-              fontFamily:
-                "ui-monospace,SFMono-Regular,SF Mono,Consolas,Liberation Mono,Menlo,monospace",
-            }}
           />
         </div>
-        <input type="submit" value={"Publish and start game"} />
+        <Button type="submit" className="m-auto">
+          Publish and start game
+        </Button>
       </form>
     </div>
   );

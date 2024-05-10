@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Convex + React (Vite)</title>
+    <script type="module">
+      if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        document.documentElement.classList.add("dark");
+        document.documentElement.classList.remove("light");
+        document.documentElement.setAttribute("data-color-mode", "dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+        document.documentElement.classList.add("light");
+        document.documentElement.setAttribute("data-color-mode", "light");
+      }
+    </script>
   </head>
   <body>
     <script type="module">
@@ -13,7 +24,7 @@
         window.__QuickJS = q;
       });
     </script>
-    <div id="root"></div>
+    <div id="root" class="dark"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

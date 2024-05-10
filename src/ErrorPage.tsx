@@ -3,7 +3,7 @@ import { Button } from "./components/ui/button";
 
 function ErrorPage() {
   return (
-    <div className="flex flex-col gap-4 items-center justify-center h-[100vh] w-[100vw]">
+    <div className="flex flex-col gap-4 items-center justify-center w-full h-full">
       <div>Uh oh! Something went wrong.</div>
       <Link to={"/"}>
         <Button variant="default">Go back home.</Button>

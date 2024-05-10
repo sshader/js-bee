@@ -3,7 +3,6 @@ import { Doc, Id } from "convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { CodeBlock, dracula } from "react-code-blocks";
 import { useCurrentPlayer } from "./lib/PlayerProvider";
 import { Button } from "./components/ui/button";
 import { scoreCode } from "./lib/ScoreCode";
@@ -14,6 +13,10 @@ import {
 } from "@/components/ui/collapsible";
 import { Card, CardTitle } from "./components/ui/card";
 import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
+import { CodeBlock } from "./components/CodeBlock";
+import { Separator } from "@radix-ui/react-separator";
+import { Link } from "./components/typography/link";
+import { Skeleton } from "./components/ui/skeleton";
 
 const makeCodeBlock = (body: string) => {
   return `function solution(a) {\n\t${body}\n}`;
@@ -26,55 +29,56 @@ function Game() {
 
   const { gameId } = useParams();
   const gameInfo = useQuery(api.games.gameInfo, { gameId: gameId! });
-  if (gameInfo === undefined) {
-    return "Loading...";
-  }
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-      <div style={{ display: "flex", gap: "20px" }}>
-        <div>
-          {`Player 1: ${gameInfo.player1!.name} ${player._id === gameInfo.player1?._id ? "(You)" : ""}`}
-        </div>
-        <div>
-          {gameInfo.player2 !== null ? (
-            `Player 2: ${gameInfo.player2.name} ${player._id === gameInfo.player2._id ? "(You)" : ""}`
-          ) : player._id === gameInfo.player1?._id ? (
-            <Button
-              onClick={() => {
-                void inviteGpt({
-                  gameId: gameInfo.game._id,
-                });
-              }}
-            >
-              Invite ChatGPT
-            </Button>
-          ) : (
-            <Button
-              onClick={() => {
-                void joinGame({
-                  gameId: gameInfo.game._id,
-                  playerId: player._id,
-                });
-              }}
-            >
-              Join game
-            </Button>
-          )}
-        </div>
-      </div>
-      <Instructions />
+  const gameState = gameInfo?.game.phase.status;
 
-      <div>
-        <h2>Prompt</h2>
-        <div style={{ fontFamily: "monospace" }}>
-          <CodeBlock
-            text={`${gameInfo.problem.prompt}\n\n${makeCodeBlock("// your code here")}`}
-            language={"js"}
-            showLineNumbers={false}
-            theme={dracula}
-          />
+  if (gameInfo === undefined) {
+    return <Skeleton />;
+  }
+  const expandSetup = gameState === "NotStarted" || gameState === "Inputting";
+  return (
+    <div className="flex flex-1 min-w-0 flex-col gap-4">
+      <div className="flex gap-4 items-center">
+        <div className="text-primary">
+          {`${gameInfo.player1!.name} ${player._id === gameInfo.player1?._id ? "(You)" : ""}`}
         </div>
+        <div>vs.</div>
+
+        {gameInfo.player2 !== null ? (
+          <div className="text-secondary">
+            {`${gameInfo.player2.name} ${player._id === gameInfo.player2._id ? "(You)" : ""}`}
+          </div>
+        ) : player._id === gameInfo.player1?._id ? (
+          <Button
+            onClick={() => {
+              void inviteGpt({
+                gameId: gameInfo.game._id,
+              });
+            }}
+          >
+            Invite ChatGPT
+          </Button>
+        ) : (
+          <Button
+            onClick={() => {
+              void joinGame({
+                gameId: gameInfo.game._id,
+                playerId: player._id,
+              });
+            }}
+          >
+            Join game
+          </Button>
+        )}
       </div>
+      <CollapsibleCard header={"How to play:"} startOpen={expandSetup}>
+        <Instructions />
+      </CollapsibleCard>
+
+      <CollapsibleCard header="Prompt:" startOpen={expandSetup}>
+        <CodeBlock
+          text={`${gameInfo.problem.prompt}\n\n${makeCodeBlock("// your code here")}`}
+        />
+      </CollapsibleCard>
 
       <Result
         game={gameInfo.game}
@@ -87,32 +91,60 @@ function Game() {
   );
 }
 
-function Instructions() {
-  const [isOpen, setIsOpen] = useState(true);
+function CollapsibleCard({
+  header,
+  startOpen,
+  children,
+}: {
+  header: string;
+  startOpen: boolean;
+  children: React.ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(startOpen);
+  useEffect(() => {
+    setIsOpen(startOpen);
+  }, [setIsOpen, startOpen]);
   return (
     <Collapsible open={isOpen} onOpenChange={(open) => setIsOpen(open)}>
-      <CollapsibleTrigger>
-        <Button variant="default">
-          <CardTitle>How to play: </CardTitle>
-          {isOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div>
-          <p>
-            This is a "JavaScript Bee". Two people take turns coding out a
-            solution one character at a time.
-          </p>
-          <div>
-            Special commands:
-            <ul>
-              <li>Type "done" on your turn to finish the solution</li>
-              <li>Type "clear" to clear the last line.</li>
-            </ul>
-          </div>
-        </div>
-      </CollapsibleContent>
+      <Card className="flex flex-col gap-4 p-2">
+        <CollapsibleTrigger className="flex flex-col gap-2">
+          <CardTitle className="flex gap-2 w-full">
+            <div>{header}</div>
+            {isOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
+          </CardTitle>
+          {isOpen && (
+            <Separator decorative className="w-full h-[1px] bg-secondary" />
+          )}
+        </CollapsibleTrigger>
+        <CollapsibleContent>{children}</CollapsibleContent>
+      </Card>
     </Collapsible>
+  );
+}
+
+function Instructions() {
+  return (
+    <div>
+      <p>
+        This is a{" "}
+        <Link
+          href="https://dropbox.tech/developers/introducing-the-python-bee"
+          target="_blank"
+        >
+          "JavaScript Bee"
+        </Link>
+        . Two people take turns coding out a solution one character at a time
+        without being able to see what you're writing until the end.
+      </p>
+      <div className="whitespace-pre-line">
+        {`
+              Special commands:
+                - Type "done" on your turn to finish the solution
+                - Type "clearline" to clear the last line (including the newline)
+                - Type "clear N" to clear the last N characters.
+                - In case of emergency, type "skip N" to skip your partner N times`}
+      </div>
+    </div>
   );
 }
 
@@ -156,16 +188,7 @@ function Playback({ inputs }: { inputs: Array<any> }) {
     }, 200);
     return () => clearInterval(advance);
   });
-  return (
-    <div className="font-mono">
-      <CodeBlock
-        text={makeCodeBlock(code)}
-        language={"js"}
-        showLineNumbers={false}
-        theme={dracula}
-      />
-    </div>
-  );
+  return <CodeBlock text={makeCodeBlock(code)} />;
 }
 
 function Result({
@@ -185,53 +208,42 @@ function Result({
   }
   if (phase.status === "InputDone") {
     return (
-      <div className="flex flex-col gap-2">
-        <h2>Input done!</h2>
-        <div>Code submitted:</div>
-        <div className="font-mono">
-          <CodeBlock
-            text={makeCodeBlock(phase.code)}
-            language={"js"}
-            showLineNumbers={false}
-            theme={dracula}
-          />
-        </div>
-        <div>Test cases:</div>
-        <div className="font-mono">
+      <CollapsibleCard header="Input done!" startOpen={true}>
+        <div className="flex flex-col gap-2">
+          <div>Code submitted:</div>
+          <CodeBlock text={makeCodeBlock(phase.code)} />
+          <div>Test cases:</div>
           <CodeBlock
             text={`const testCases = ${JSON.stringify(problem.testCases, null, 2)}`}
-            language={"js"}
-            showLineNumbers={false}
-            theme={dracula}
           />
+          <form
+            className="flex flex-col items-start gap 2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const f = async () => {
+                const result = await scoreCode(
+                  makeCodeBlock(phase.code),
+                  problem.testCases
+                );
+                await recordResult({
+                  gameId: game._id,
+                  testCaseResults: result,
+                });
+              };
+              void f();
+            }}
+          >
+            <div className="flex gap-2">
+              <input type="checkbox" required />
+              <label>
+                I acknowledge that this code will run these test cases in my
+                browser, and accept the risk.
+              </label>
+            </div>
+            <Button type="submit">Run and score</Button>
+          </form>
         </div>
-        <form
-          className="flex flex-col items-start gap 2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const f = async () => {
-              const result = await scoreCode(
-                makeCodeBlock(phase.code),
-                problem.testCases
-              );
-              await recordResult({
-                gameId: game._id,
-                testCaseResults: result,
-              });
-            };
-            void f();
-          }}
-        >
-          <div className="flex gap-2">
-            <input type="checkbox" required />
-            <label>
-              I acknowledge that this code will run these test cases in my
-              browser, and accept the risk.
-            </label>
-          </div>
-          <Button type="submit">Run and score</Button>
-        </form>
-      </div>
+      </CollapsibleCard>
     );
   }
   if (phase.status === "Inputting") {
@@ -262,36 +274,19 @@ function Result({
   const total = testCases.length;
 
   return (
-    <div>
-      <h2>Done!</h2>
-      <Collapsible
-        open={testCasesOpen}
-        onOpenChange={(open) => setTestCasesOpen(open)}
-      >
-        <CollapsibleTrigger>
-          <Button variant="default">
-            <div>Test cases:</div>
-            <div>
-              {numPassed === total
-                ? `🎉🎉🎉 ${numPassed} / ${total}`
-                : `🤷 ${numPassed} / ${total}`}
-            </div>
-            {testCasesOpen ? <ChevronDownIcon /> : <ChevronRightIcon />}
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="font-mono">
-            <CodeBlock
-              text={resultCodeSnippets.join("\n\n")}
-              language={"js"}
-              showLineNumbers={false}
-              theme={dracula}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-      <div>Code submitted:</div>
-      <Playback inputs={inputs} />
+    <div className="flex flex-col gap-4">
+      <Card className="p-2 flex flex-col gap-2">
+        <CardTitle>
+          {numPassed === total
+            ? `Result: 🎉🎉🎉 ${numPassed} / ${total}`
+            : `Result: 🤷 ${numPassed} / ${total}`}
+        </CardTitle>
+        <div>Code submitted:</div>
+        <Playback inputs={inputs} />
+      </Card>
+      <CollapsibleCard header="Test cases:" startOpen>
+        <CodeBlock text={resultCodeSnippets.join("\n\n")} />
+      </CollapsibleCard>
     </div>
   );
 }
@@ -300,12 +295,12 @@ function InnerGame({ game }: { game: Doc<"game"> }) {
   const player = useCurrentPlayer();
   const isPlaying = game.player1 === player._id || game.player2 === player._id;
   if (isPlaying) {
-    return <PlayingGame game={game} playerId={player._id} />;
+    return <GameControls game={game} playerId={player._id} />;
   }
   return <SpectatingGame game={game} playerId={player._id} />;
 }
 
-function PlayingGame({
+function GameControls({
   game,
   playerId,
 }: {
@@ -319,37 +314,63 @@ function PlayingGame({
   const [playerInput, setPlayerInput] = useState("");
   const takeTurn = useMutation(api.engine.takeTurn);
   if (result === undefined) {
-    return "Loading...";
+    return <Skeleton />;
   }
   const { isCurrentPlayersTurn, lastPartnerInput } = result;
   if (game.phase.status !== "Inputting") {
     return "";
   }
-  return (
-    <div className="text-xl">
-      <div>
-        {isCurrentPlayersTurn ? `Your turn!` : `Waiting on other player!`}
-      </div>
-      <div>{`Your partner last said: ${renderInput(lastPartnerInput?.operation)}`}</div>
-      <form
-        style={{ display: "flex", gap: "5px" }}
-        onSubmit={(e) => {
-          e.preventDefault();
-          void takeTurn({
-            gameId: game._id,
-            playerId,
-            input: playerInput,
-          }).finally(() => setPlayerInput(""));
-        }}
+
+  const [selfClass, partnerClass] =
+    playerId == game.player1
+      ? ["primary", "secondary"]
+      : ["secondary", "primary"];
+  const playerForm = (
+    <form
+      className="flex flex-col gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void takeTurn({
+          gameId: game._id,
+          playerId,
+          input: playerInput,
+        }).finally(() => setPlayerInput(""));
+      }}
+    >
+      <div
+        className="text-2xl"
+        title={isCurrentPlayersTurn ? "Your turn!" : "Waiting for partner"}
+      >{`You: ${isCurrentPlayersTurn ? "👩‍💻" : "🕦"}`}</div>
+      <input
+        className={`text-${selfClass} border-solid rounded-md border-4 border-muted p-4 text-4xl w-[5em] text-center`}
+        autoFocus
+        value={playerInput}
+        onChange={(event) => setPlayerInput(event.target.value)}
+      />
+      <Button type="submit" variant="outline" disabled={!isCurrentPlayersTurn}>
+        Submit
+      </Button>
+    </form>
+  );
+  const partnerState = (
+    <div className="flex flex-col gap-2">
+      <div className="text-2xl">Partner:</div>
+      <div
+        className={`border-solid rounded-md border-4 p-4 text-4xl text-center min-w-[5em] ${isCurrentPlayersTurn ? `border-${partnerClass}` : "border-muted text-muted"}`}
       >
-        <input
-          autoFocus
-          value={playerInput}
-          onChange={(event) => setPlayerInput(event.target.value)}
-          placeholder="Next character..."
-        />
-        <input type="submit" value="Submit" disabled={!isCurrentPlayersTurn} />
-      </form>
+        {renderInput(lastPartnerInput?.operation)}
+      </div>
+    </div>
+  );
+  return playerId == game.player1 ? (
+    <div className="flex gap-4">
+      {playerForm}
+      {partnerState}
+    </div>
+  ) : (
+    <div className="flex gap-4">
+      {partnerState}
+      {playerForm}
     </div>
   );
 }
@@ -393,17 +414,8 @@ function SpectatingGame({
     playerId,
   });
   if (result === undefined) {
-    return "Loading...";
+    return <Skeleton />;
   }
-  return (
-    <div style={{ fontFamily: "monospace" }}>
-      <CodeBlock
-        text={makeCodeBlock(result.code)}
-        language={"js"}
-        showLineNumbers={false}
-        theme={dracula}
-      />
-    </div>
-  );
+  return <CodeBlock text={makeCodeBlock(result.code)} />;
 }
 export default Game;

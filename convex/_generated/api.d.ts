@@ -15,6 +15,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as engine from "../engine.js";
+import type * as functions from "../functions.js";
 import type * as games from "../games.js";
 import type * as openai from "../openai.js";
 import type * as players from "../players.js";
@@ -30,6 +31,7 @@ import type * as problems from "../problems.js";
  */
 declare const fullApi: ApiFromModules<{
   engine: typeof engine;
+  functions: typeof functions;
   games: typeof games;
   openai: typeof openai;
   players: typeof players;

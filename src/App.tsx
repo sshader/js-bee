@@ -1,11 +1,68 @@
 import { Button } from "@/components/ui/button";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
-import { useNavigate } from "react-router-dom";
+import {
+  RouterProvider,
+  createBrowserRouter,
+  useNavigate,
+} from "react-router-dom";
 import { useCurrentPlayer } from "./lib/PlayerProvider";
 import Player from "./Player";
+import ErrorPage from "./ErrorPage";
+import Game from "./Game";
+import ProblemEditor from "./ProblemEditor";
+import { Sheet, SheetHeader, SheetTitle } from "./components/ui/sheet";
+import { DotIcon, HomeIcon } from "@radix-ui/react-icons";
+import { Id } from "convex/_generated/dataModel";
+import { Card } from "./components/ui/card";
+
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Index />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: "games/:gameId",
+    element: <Game />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: "problems/:problemId",
+    element: <ProblemEditor />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: "*",
+    element: <ErrorPage />,
+  },
+]);
 
 function App() {
+  return (
+    <main className="font-mono flex flex-col gap-8 h-[100vh] w-[100vw] overflow-auto p-10">
+      <Sheet>
+        <SheetTitle className="flex justify-between">
+          <div className="flex gap-2 items-center">
+            <Button
+              variant="outline"
+              onClick={() => {
+                void router.navigate("/");
+              }}
+            >
+              <HomeIcon />
+            </Button>
+            <div>JS Bee</div>
+          </div>
+          <Player />
+        </SheetTitle>
+        <RouterProvider router={router} />
+      </Sheet>
+    </main>
+  );
+}
+
+function Index() {
   const ongoingGames = useQuery(api.games.ongoingGames) ?? [];
   const joinGame = useMutation(api.games.joinGame);
   const startGame = useMutation(api.games.startGame);
@@ -15,91 +72,125 @@ function App() {
 
   const player = useCurrentPlayer();
 
+  const handleJoinGame = async (gameId: Id<"game">) => {
+    await joinGame({
+      playerId: player._id,
+      gameId,
+    });
+    navigate(`/games/${gameId}`);
+  };
+
   return (
-    <main className="container max-w-2xl flex flex-col gap-8">
-      <h1>JS Bee</h1>
-      <Player />
-      <div>
-        <h2>Ongoing Games</h2>
-        <div className="flex flex-col">
-          {...ongoingGames.map((g) => {
-            const needsPlayer = g.player2 === null;
-            if (needsPlayer) {
+    <div className="flex gap-4 text-center items-start w-full h-full overflow-hidden">
+      <div className="flex flex-col w-full h-full">
+        <Sheet>
+          <SheetTitle>Ongoing Games</SheetTitle>
+          <div className="flex flex-col flex-1 min-h-0 gap-2 w-full overflow-auto">
+            {...ongoingGames.map(
+              ({ game, player2Name, player1Name, problemSummary }) => {
+                const participating =
+                  game.player1 === player._id || game.player2 === player._id;
+                const canJoin = game.player2 === null && !participating;
+                const summary = (
+                  <div className="flex gap-2 items-center">
+                    <div>{problemSummary}</div>
+                    <DotIcon />
+                    <div>{`${player1Name ?? "No one"} vs. ${player2Name ?? "No one"}`}</div>
+                  </div>
+                );
+                if (canJoin) {
+                  return (
+                    <Card
+                      key={game._id}
+                      className="flex items-center justify-between gap-4 text-center w-full p-2"
+                    >
+                      {summary}
+                      <Button
+                        variant="default"
+                        onClick={() => void handleJoinGame(game._id)}
+                      >{`Join`}</Button>
+                    </Card>
+                  );
+                }
+                if (participating) {
+                  return (
+                    <Card
+                      key={game._id}
+                      className="flex items-center justify-between gap-4 text-center w-full p-2"
+                    >
+                      {summary}
+                      <Button
+                        onClick={() => navigate(`/games/${game._id}`)}
+                      >{`Rejoin`}</Button>
+                    </Card>
+                  );
+                }
+                return (
+                  <Card
+                    key={game._id}
+                    className="flex items-center justify-between gap-4 text-center w-full p-2"
+                  >
+                    {summary}
+                    <Button
+                      variant="secondary"
+                      onClick={() => navigate(`/games/${game._id}`)}
+                    >{`Watch`}</Button>
+                  </Card>
+                );
+              }
+            )}
+          </div>
+        </Sheet>
+      </div>
+
+      <div className="flex flex-col gap-2 w-full h-full">
+        <Sheet>
+          <SheetTitle>Problems</SheetTitle>
+          <div className="flex flex-col flex-shrink-1 min-h-0 gap-2 overflow-auto">
+            {...problems.map((p) => {
               return (
-                <div key={g._id}>
+                <Card
+                  className="flex gap-2 items-center p-2 w-full justify-between"
+                  key={p._id}
+                >
+                  <div>{p.summary ?? p.prompt.substring(0, 50)}</div>
                   <Button
                     onClick={() => {
                       const f = async () => {
-                        await joinGame({
+                        const gameId = await startGame({
                           playerId: player._id,
-                          gameId: g._id,
+                          problemId: p._id,
                         });
-                        navigate(`/games/${g._id}`);
+                        navigate(`/games/${gameId}`);
                       };
                       void f();
                     }}
-                  >{`Join`}</Button>
-                </div>
+                  >
+                    New game
+                  </Button>
+                </Card>
               );
-            } else {
-              return (
-                <Button
-                  variant="secondary"
-                  key={g._id}
-                  onClick={() => {
-                    navigate(`/games/${g._id}`);
-                  }}
-                >
-                  Watch
-                </Button>
-              );
-            }
-          })}
-        </div>
+            })}
+          </div>
+          <Button
+            className="ml-auto mr-auto"
+            onClick={() => {
+              const f = async () => {
+                const problem = await createProblem({
+                  prompt:
+                    "// Explain your problem here and give an example\nsolution({ a: 1, b: 2 }) // 3",
+                  testCases: [{ args: { a: 1, b: 2 }, expected: 3 }],
+                });
+                navigate(`/problems/${problem._id}`);
+              };
+              void f();
+            }}
+          >
+            New problem
+          </Button>
+        </Sheet>
       </div>
-
-      <div>
-        <h2 className="text-md">Problems</h2>
-        {...problems.map((p) => {
-          return (
-            <div className="flex gap-2 items-center" key={p._id}>
-              <div className="border-solid border-2 rounded-sm border-slate-500 p-2">
-                {p.summary ?? p.prompt.substring(0, 50)}
-              </div>
-              <Button
-                onClick={() => {
-                  const f = async () => {
-                    const gameId = await startGame({
-                      playerId: player._id,
-                      problemId: p._id,
-                    });
-                    navigate(`/games/${gameId}`);
-                  };
-                  void f();
-                }}
-              >
-                Start new game
-              </Button>
-            </div>
-          );
-        })}
-        <Button
-          onClick={() => {
-            const f = async () => {
-              const problem = await createProblem({
-                prompt:
-                  "// Explain your problem here and give an example\nsolution({ a: 1, b: 2 }) // 3",
-                testCases: [{ args: { a: 1, b: 2 }, expected: 3 }],
-              });
-              navigate(`/problems/${problem._id}`);
-            };
-            void f();
-          }}
-        >
-          New problem
-        </Button>
-      </div>
-    </main>
+    </div>
   );
 }
 

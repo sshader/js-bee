@@ -1,12 +1,27 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, mutation } from "./functions";
 import { Doc } from "./_generated/dataModel";
 
 export const ongoingGames = query({
   args: {},
   handler: async (ctx, _args) => {
     const allGames = await ctx.db.query("game").collect();
-    return allGames.filter((g) => g.phase.status !== "Done");
+    const ongoingGames = allGames.filter((g) => g.phase.status !== "Done");
+    return Promise.all(
+      ongoingGames.map(async (game) => {
+        const player1 =
+          game.player1 !== null ? await ctx.db.getX(game.player1) : null;
+        const player2 =
+          game.player2 !== null ? await ctx.db.getX(game.player2) : null;
+        const problem = await ctx.db.getX(game.problemId);
+        return {
+          game,
+          player1Name: player1?.name,
+          player2Name: player2?.name,
+          problemSummary: problem.summary ?? "",
+        };
+      })
+    );
   },
 });
 
@@ -34,6 +49,8 @@ export const startGame = mutation({
       gameId,
       code: "",
       cursorPosition: 0,
+      player1Skips: 0,
+      player2Skips: 0,
     });
     return gameId;
   },
