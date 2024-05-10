@@ -88,10 +88,14 @@ export async function handleTurn(
     await ctx.db.patch(codeDoc._id, {
       cursorPosition: newCursor,
     });
-    return isPlayer1Turn ? game.player2 : game.player1;
+    return nextPlayer;
   }
   if (input.startsWith("skip")) {
     const numSkips = parseInt(input.split(" ")[1] ?? "5");
+    await addInput(ctx, tail, {
+      isPlayer1: isPlayer1Turn,
+      operation: { kind: "Add", input: "" },
+    });
     await ctx.db.patch(
       codeDoc._id,
       isPlayer1Turn
@@ -131,7 +135,7 @@ export async function handleTurn(
       code: codeBeforeCursor.substring(0, newCursor) + codeAfterCurser,
       cursorPosition: newCursor,
     });
-    return isPlayer1Turn ? game.player2 : game.player1;
+    return nextPlayer;
   }
   if (input.startsWith("clear")) {
     const numDeleted = parseInt(input.split(" ")[1] ?? "1");
