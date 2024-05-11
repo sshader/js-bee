@@ -1,4 +1,5 @@
 import {
+  CustomCtx,
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
@@ -13,6 +14,9 @@ export type DatbaseReader = VanillaConvex.DatabaseReader & {
 };
 
 export type DatabaseWriter = VanillaConvex.DatabaseWriter & DatbaseReader;
+
+export type MutationCtx = CustomCtx<typeof mutation>;
+export type QueryCtx = CustomCtx<typeof query>;
 
 export const query = customQuery(VanillaConvex.query, {
   args: {},

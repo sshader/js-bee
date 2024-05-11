@@ -17,6 +17,13 @@ import { CodeBlock } from "./components/CodeBlock";
 import { Separator } from "@radix-ui/react-separator";
 import { Link } from "./components/typography/link";
 import { Skeleton } from "./components/ui/skeleton";
+import {
+  Input,
+  Operation,
+  State,
+  applyInput,
+  getInitialState,
+} from "../common/inputs";
 
 const makeCodeBlock = (body: string) => {
   return `function solution(a) {\n\t${body}\n}`;
@@ -39,7 +46,7 @@ function Game() {
     <div className="flex flex-1 min-w-0 flex-col gap-4">
       <div className="flex gap-4 items-center">
         <div className="text-primary">
-          {`${gameInfo.player1!.name} ${player._id === gameInfo.player1?._id ? "(You)" : ""}`}
+          {`${gameInfo.player1.name} ${player._id === gameInfo.player1?._id ? "(You)" : ""}`}
         </div>
         <div>vs.</div>
 
@@ -54,6 +61,7 @@ function Game() {
                 gameId: gameInfo.game._id,
               });
             }}
+            variant="secondary"
           >
             Invite ChatGPT
           </Button>
@@ -76,17 +84,11 @@ function Game() {
 
       <CollapsibleCard header="Prompt:" startOpen={expandSetup}>
         <CodeBlock
-          text={`${gameInfo.problem.prompt}\n\n${makeCodeBlock("// your code here")}`}
+          text={`${gameInfo.problemPrompt}\n\n${makeCodeBlock("// your code here")}`}
         />
       </CollapsibleCard>
 
-      <Result
-        game={gameInfo.game}
-        problem={gameInfo.problem}
-        inputs={gameInfo.inputs.flatMap((i) =>
-          i.inputs.map((o) => o.operation)
-        )}
-      />
+      <Result game={gameInfo.game} />
     </div>
   );
 }
@@ -148,111 +150,76 @@ function Instructions() {
   );
 }
 
-function Playback({ inputs }: { inputs: Array<any> }) {
+function Playback({ inputs }: { inputs: Array<Input> }) {
   const [frame, setFrame] = useState(0);
-  const [code, setCode] = useState("");
-  const [cursor, setCursor] = useState(0);
+  const [gameState, setGameState] = useState<State>(getInitialState());
 
   useEffect(() => {
     const advance = setInterval(() => {
-      const input = inputs[frame];
-      const codeBeforeCursor = code.substring(0, cursor);
-      const codeAfterCursor = code.substring(cursor);
-      if (input.kind === "Add") {
-        setCode(codeBeforeCursor + input.input + codeAfterCursor);
-        setCursor(cursor + 1);
-        setFrame(frame + 1);
-        return;
+      let f = frame;
+      let input = inputs[f];
+      f = (f + 1) % inputs.length;
+      setFrame(f);
+      setGameState(applyInput(f === 0 ? getInitialState() : gameState, input));
+      if (input.operation.kind === "Skipped") {
+        input = inputs[f];
+        f = (f + 1) % inputs.length;
+        setFrame(f);
+        setGameState(
+          applyInput(f === 0 ? getInitialState() : gameState, input)
+        );
       }
-      if (input.kind === "Delete") {
-        const newCursor =
-          input.numDeleted === undefined
-            ? Math.max(codeBeforeCursor.lastIndexOf("\n") - 1, 0)
-            : cursor - input.numDeleted;
-        setCode(codeBeforeCursor.substring(0, newCursor) + codeAfterCursor);
-        setCursor(newCursor);
-        setFrame(frame + 1);
-        return;
-      }
-      if (input.kind === "MoveCursor") {
-        setCursor(input.pos);
-        setFrame(frame + 1);
-        return;
-      }
-      if (input.kind === "Finish") {
-        setCode("");
-        setFrame(0);
-        setCursor(0);
-        return;
-      }
-    }, 200);
+    }, 300);
     return () => clearInterval(advance);
   });
-  return <CodeBlock text={makeCodeBlock(code)} />;
+  return (
+    <div className="flex flex-col gap">
+      <div className="flex gap-2">
+        <div
+          className={`border-solid rounded-md border-4 p-4 text-4xl text-center min-w-[5em] ${gameState.isLastPlayerPlayer1 ? "border-primary" : "border-muted text-muted"}`}
+        >
+          {renderInput(gameState.lastPlayer1Input)}
+        </div>
+        <div
+          className={`border-solid rounded-md border-4 p-4 text-4xl text-center min-w-[5em] ${gameState.isLastPlayerPlayer1 ? "border-muted text-muted" : "border-secondary"}`}
+        >
+          {renderInput(gameState.lastPlayer2Input)}
+        </div>
+      </div>
+      <CodeBlock text={makeCodeBlock(gameState.code)} />
+    </div>
+  );
 }
 
-function Result({
-  game,
-  problem,
-  inputs,
-}: {
-  game: Doc<"game">;
-  problem: Doc<"problem">;
-  inputs: Array<any>;
-}) {
-  const recordResult = useMutation(api.engine.recordResult);
-  const [testCasesOpen, setTestCasesOpen] = useState(true);
-  const phase = game.phase;
-  if (phase.status === "NotStarted") {
-    return "Waiting for two players...";
+function Result({ game }: { game: Doc<"game"> }) {
+  const player = useCurrentPlayer();
+  switch (game.phase.status) {
+    case "NotStarted":
+      return "Waiting for two players...";
+    case "InputDone": {
+      return <Scoring gameId={game._id} />;
+    }
+    case "Done":
+      return <Done gameId={game._id} />;
+    case "Inputting": {
+      const isPlaying =
+        game.phase.player1 === player._id || game.phase.player2 === player._id;
+      if (isPlaying) {
+        return <GameControls game={game} playerId={player._id} />;
+      }
+      return <SpectatingGame game={game} playerId={player._id} />;
+    }
   }
-  if (phase.status === "InputDone") {
-    return (
-      <CollapsibleCard header="Input done!" startOpen={true}>
-        <div className="flex flex-col gap-2">
-          <div>Code submitted:</div>
-          <CodeBlock text={makeCodeBlock(phase.code)} />
-          <div>Test cases:</div>
-          <CodeBlock
-            text={`const testCases = ${JSON.stringify(problem.testCases, null, 2)}`}
-          />
-          <form
-            className="flex flex-col items-start gap 2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const f = async () => {
-                const result = await scoreCode(
-                  makeCodeBlock(phase.code),
-                  problem.testCases
-                );
-                await recordResult({
-                  gameId: game._id,
-                  testCaseResults: result,
-                });
-              };
-              void f();
-            }}
-          >
-            <div className="flex gap-2">
-              <input type="checkbox" required />
-              <label>
-                I acknowledge that this code will run these test cases in my
-                browser, and accept the risk.
-              </label>
-            </div>
-            <Button type="submit">Run and score</Button>
-          </form>
-        </div>
-      </CollapsibleCard>
-    );
-  }
-  if (phase.status === "Inputting") {
-    return <InnerGame game={game} />;
-  }
+}
 
-  const result = phase.result;
-  const testCases = problem.testCases;
-  const resultCodeSnippets = result.map((r, idx) => {
+function Done({ gameId }: { gameId: Id<"game"> }) {
+  const info = useQuery(api.games.infoForPlayback, { gameId });
+  if (info === undefined) {
+    return <Skeleton />;
+  }
+  const result = info.testResults;
+  const testCases = info.problem.testCases;
+  const resultCodeSnippets = result.results.map((r, idx) => {
     const testCase = testCases[idx];
     const argStr = JSON.stringify(testCase.args, null, 2);
     const expected = JSON.stringify(testCase.expected, null, 2);
@@ -270,19 +237,22 @@ function Result({
         return "";
     }
   });
-  const numPassed = result.filter((r) => r.status === "Passed").length;
+  const numPassed = result.results.filter((r) => r.status === "Passed").length;
   const total = testCases.length;
+  const summaryString = result.results
+    .map((r) => (r.status === "Passed" ? "✅" : "❌"))
+    .join("");
 
   return (
     <div className="flex flex-col gap-4">
       <Card className="p-2 flex flex-col gap-2">
         <CardTitle>
           {numPassed === total
-            ? `Result: 🎉🎉🎉 ${numPassed} / ${total}`
-            : `Result: 🤷 ${numPassed} / ${total}`}
+            ? `Result: 🎉 ${summaryString} ${numPassed} / ${total}`
+            : `Result: 🤷 ${summaryString} ${numPassed} / ${total}`}
         </CardTitle>
         <div>Code submitted:</div>
-        <Playback inputs={inputs} />
+        <Playback inputs={info.inputs.flatMap((i) => i.inputs)} />
       </Card>
       <CollapsibleCard header="Test cases:" startOpen>
         <CodeBlock text={resultCodeSnippets.join("\n\n")} />
@@ -291,13 +261,50 @@ function Result({
   );
 }
 
-function InnerGame({ game }: { game: Doc<"game"> }) {
-  const player = useCurrentPlayer();
-  const isPlaying = game.player1 === player._id || game.player2 === player._id;
-  if (isPlaying) {
-    return <GameControls game={game} playerId={player._id} />;
+function Scoring({ gameId }: { gameId: Id<"game"> }) {
+  const scoringInfo = useQuery(api.games.infoForScoring, { gameId: gameId });
+  const recordResult = useMutation(api.engine.recordResult);
+  if (scoringInfo === undefined) {
+    return <Skeleton />;
   }
-  return <SpectatingGame game={game} playerId={player._id} />;
+  return (
+    <CollapsibleCard header="Input done!" startOpen={true}>
+      <div className="flex flex-col gap-2">
+        <div>Code submitted:</div>
+        <CodeBlock text={makeCodeBlock(scoringInfo.code)} />
+        <div>Test cases:</div>
+        <CodeBlock
+          text={`const testCases = ${JSON.stringify(scoringInfo.problem.testCases, null, 2)}`}
+        />
+        <form
+          className="flex flex-col items-start gap 2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const f = async () => {
+              const result = await scoreCode(
+                makeCodeBlock(scoringInfo.code),
+                scoringInfo.problem.testCases
+              );
+              await recordResult({
+                gameId,
+                testCaseResults: result,
+              });
+            };
+            void f();
+          }}
+        >
+          <div className="flex gap-2">
+            <input type="checkbox" required />
+            <label>
+              I acknowledge that this code will run these test cases in my
+              browser, and accept the risk.
+            </label>
+          </div>
+          <Button type="submit">Run and score</Button>
+        </form>
+      </div>
+    </CollapsibleCard>
+  );
 }
 
 function GameControls({
@@ -316,13 +323,14 @@ function GameControls({
   if (result === undefined) {
     return <Skeleton />;
   }
-  const { isCurrentPlayersTurn, lastPartnerInput } = result;
-  if (game.phase.status !== "Inputting") {
+
+  if (game.phase.status !== "Inputting" || result === null) {
     return "";
   }
+  const { isCurrentPlayersTurn, lastPartnerInput } = result;
 
   const [selfClass, partnerClass] =
-    playerId == game.player1
+    playerId == game.phase.player1
       ? ["primary", "secondary"]
       : ["secondary", "primary"];
   const playerForm = (
@@ -358,11 +366,11 @@ function GameControls({
       <div
         className={`border-solid rounded-md border-4 p-4 text-4xl text-center min-w-[5em] ${isCurrentPlayersTurn ? `border-${partnerClass}` : "border-muted text-muted"}`}
       >
-        {renderInput(lastPartnerInput?.operation)}
+        {renderInput(lastPartnerInput)}
       </div>
     </div>
   );
-  return playerId == game.player1 ? (
+  return playerId == game.phase.player1 ? (
     <div className="flex gap-4">
       {playerForm}
       {partnerState}
@@ -375,30 +383,31 @@ function GameControls({
   );
 }
 
-function renderInput(input: any) {
-  if (input === undefined) {
+function renderInput(input: Operation | null) {
+  if (input === null) {
     return "(nothing)";
   }
-  if (input.kind === "Add") {
-    if (input.input === " ") {
-      return "space";
+  switch (input.kind) {
+    case "Add": {
+      if (input.input === " ") {
+        return "space";
+      }
+      if (input.input === "\n") {
+        return "\\n";
+      }
+      if (input.input === "\t") {
+        return "\\t";
+      }
+      return input.input;
     }
-    if (input.input === "\n") {
-      return "newline";
-    }
-    if (input.input === "\t") {
-      return "tab";
-    }
-    return input.input;
-  }
-  if (input.kind === "Delete") {
-    return "backspace";
-  }
-  if (input.kind === "Finished") {
-    return "finished";
-  }
-  if (input.kind === "MoveCursor") {
-    return "carriage return";
+    case "Delete":
+      return `clear ${input.numDeleted ?? 1}`;
+    case "Finish":
+      return "done";
+    case "Skip":
+      return `skip ${input.numSkips}`;
+    case "Skipped":
+      return "skipped";
   }
 }
 
@@ -416,6 +425,6 @@ function SpectatingGame({
   if (result === undefined) {
     return <Skeleton />;
   }
-  return <CodeBlock text={makeCodeBlock(result.code)} />;
+  return <CodeBlock text={makeCodeBlock(result.state.code)} />;
 }
 export default Game;

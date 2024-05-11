@@ -1,7 +1,9 @@
 import { v } from "convex/values";
-import { mutation, MutationCtx } from "./_generated/server";
+import { mutation, MutationCtx, QueryCtx } from "./functions";
 import { internal } from "./_generated/api";
-import { Doc, Id } from "./_generated/dataModel";
+import { Id } from "./_generated/dataModel";
+import { applyInput, Input, Operation } from "../common/inputs";
+import { InProgressGame } from "../common/games";
 
 export const takeTurn = mutation({
   args: {
@@ -10,145 +12,62 @@ export const takeTurn = mutation({
     input: v.string(),
   },
   handler: async (ctx, args) => {
-    const game = await ctx.db.get(args.gameId);
-    if (game === null) {
-      throw new Error("Unknown game");
+    const game = await ctx.db.getX(args.gameId);
+    const phase = game.phase;
+    if (phase.status !== "Inputting") {
+      throw new Error("Game isn't in the inputting phase");
     }
-    const nextPlayerId = await handleTurn(ctx, game, args.playerId, args.input);
-    if (nextPlayerId === null) {
+    const gameStateBefore = await getGameState(ctx, game._id);
+    await handleTurn(
+      ctx,
+      game._id,
+      phase,
+      args.playerId,
+      parseInput(args.input, gameStateBefore.state.code)
+    );
+
+    const gameStateAfter = await getGameState(ctx, game._id);
+
+    if (gameStateAfter.state.isDone) {
       return;
     }
-    const nextPlayer = await ctx.db.get(nextPlayerId);
-    const codeDoc = (await ctx.db
-      .query("code")
-      .withIndex("ByGame", (q) => q.eq("gameId", game._id))
-      .unique())!;
-    const shouldSkip =
-      (nextPlayerId === game.player1 && codeDoc.player1Skips > 0) ||
-      codeDoc.player2Skips > 0;
+    const nextPlayerId = gameStateAfter.state.isLastPlayerPlayer1
+      ? phase.player2
+      : phase.player1;
+    const shouldSkip = gameStateAfter.state.isLastPlayerPlayer1
+      ? gameStateAfter.state.player2Skips > 0
+      : gameStateAfter.state.player1Skips > 0;
     if (shouldSkip) {
-      await handleTurn(ctx, game, nextPlayerId, "");
+      await handleTurn(ctx, game._id, phase, nextPlayerId, { kind: "Skipped" });
       return;
     }
-    if (nextPlayer?.name === "ChatGPT") {
+    const nextPlayer = await ctx.db.getX(nextPlayerId);
+    if (nextPlayer.botType !== undefined) {
+      // TODO: handle more bot types
       await ctx.scheduler.runAfter(0, internal.openai.takeTurn, {
         gameId: game._id,
+        mustAnswer: false,
       });
     }
   },
 });
 
-export async function handleTurn(
-  ctx: MutationCtx,
-  game: Doc<"game">,
-  playerId: Id<"player">,
-  input: string
-) {
-  if (game.phase.status !== "Inputting") {
-    throw new Error("Game isn't in the inputting phase");
-  }
-  const inputs = await ctx.db
-    .query("inputs")
-    .withIndex("ByGame", (q) => q.eq("gameId", game._id))
-    .collect();
-  const tail = inputs.at(-1)!;
-  const lastInput = tail.inputs.at(-1);
-  const isPlayer1Turn = lastInput === undefined || !lastInput.isPlayer1;
-  const nextPlayer = isPlayer1Turn ? game.player2 : game.player1;
-  if (isPlayer1Turn && game.player1 !== playerId) {
-    throw new Error("Not current player's turn");
-  } else if (!isPlayer1Turn && game.player2 !== playerId) {
-    throw new Error("Not current player's turn");
-  }
-  const codeDoc = (await ctx.db
-    .query("code")
-    .withIndex("ByGame", (q) => q.eq("gameId", game._id))
-    .unique())!;
+export function parseInput(input: string, code: string): Operation {
   if (input === "done") {
-    await addInput(ctx, tail, {
-      isPlayer1: isPlayer1Turn,
-      operation: { kind: "Finish" },
-    });
-    await ctx.db.patch(game._id, {
-      phase: {
-        status: "InputDone",
-        code: codeDoc.code,
-      },
-    });
-    return null;
-  }
-  const codeBeforeCursor = codeDoc.code.substring(0, codeDoc.cursorPosition);
-  const codeAfterCurser = codeDoc.code.substring(codeDoc.cursorPosition);
-  if (input === "\\r") {
-    const newCursor = Math.max(codeBeforeCursor.lastIndexOf("\n"), 0);
-    await addInput(ctx, tail, {
-      isPlayer1: isPlayer1Turn,
-      operation: { kind: "MoveCursor", newPos: newCursor },
-    });
-    await ctx.db.patch(codeDoc._id, {
-      cursorPosition: newCursor,
-    });
-    return nextPlayer;
+    return { kind: "Finish" };
   }
   if (input.startsWith("skip")) {
-    const numSkips = parseInt(input.split(" ")[1] ?? "5");
-    await addInput(ctx, tail, {
-      isPlayer1: isPlayer1Turn,
-      operation: { kind: "Add", input: "" },
-    });
-    await ctx.db.patch(
-      codeDoc._id,
-      isPlayer1Turn
-        ? {
-            player2Skips: numSkips,
-          }
-        : { player1Skips: numSkips }
-    );
-    return nextPlayer;
-  }
-  // skip
-  if (input === "") {
-    await addInput(ctx, tail, {
-      isPlayer1: isPlayer1Turn,
-      operation: { kind: "Add", input: "" },
-    });
-    await ctx.db.patch(
-      codeDoc._id,
-      isPlayer1Turn
-        ? {
-            player1Skips: (codeDoc.player1Skips ?? 1) - 1,
-          }
-        : {
-            player2Skips: (codeDoc.player2Skips ?? 1) - 1,
-          }
-    );
-    return nextPlayer;
+    const numSkips = parseInt(input.split(" ")[1] ?? "1");
+    return { kind: "Skip", numSkips };
   }
   if (input === "clearline") {
-    const newCursor = Math.max(codeBeforeCursor.lastIndexOf("\n") - 1, 0);
-    const numDeleted = codeDoc.cursorPosition - newCursor;
-    await addInput(ctx, tail, {
-      isPlayer1: isPlayer1Turn,
-      operation: { kind: "Delete", numDeleted },
-    });
-    await ctx.db.patch(codeDoc._id, {
-      code: codeBeforeCursor.substring(0, newCursor) + codeAfterCurser,
-      cursorPosition: newCursor,
-    });
-    return nextPlayer;
+    const newCursor = Math.max(code.lastIndexOf("\n") - 1, 0);
+    const numDeleted = code.length - newCursor;
+    return { kind: "Delete", numDeleted };
   }
   if (input.startsWith("clear")) {
     const numDeleted = parseInt(input.split(" ")[1] ?? "1");
-    const newCursor = codeDoc.cursorPosition - numDeleted;
-    await addInput(ctx, tail, {
-      isPlayer1: isPlayer1Turn,
-      operation: { kind: "Delete", numDeleted },
-    });
-    await ctx.db.patch(codeDoc._id, {
-      code: codeBeforeCursor.substring(0, newCursor) + codeAfterCurser,
-      cursorPosition: newCursor,
-    });
-    return nextPlayer;
+    return { kind: "Delete", numDeleted };
   }
   let char = input;
   if (input === "\\n") {
@@ -160,25 +79,82 @@ export async function handleTurn(
       throw new Error("More than one character!");
     }
   }
-  await addInput(ctx, tail, {
-    isPlayer1: isPlayer1Turn,
-    operation: { kind: "Add", input: char },
-  });
-  await ctx.db.patch(codeDoc._id, {
-    code: codeBeforeCursor + char + codeAfterCurser,
-    cursorPosition: codeDoc.cursorPosition + 1,
-  });
-  return nextPlayer;
+  return { kind: "Add", input: char };
 }
 
-async function addInput(
+export async function getGameState(ctx: QueryCtx, gameId: Id<"game">) {
+  const gameState = await ctx.db
+    .query("gameState")
+    .withIndex("ByGame", (q) => q.eq("gameId", gameId))
+    .unique();
+  if (gameState === null) {
+    throw new Error(`No game state for ${gameId}`);
+  }
+  return gameState;
+}
+
+export async function getLastInput(ctx: QueryCtx, gameId: Id<"game">) {
+  const tail = await ctx.db
+    .query("inputs")
+    .withIndex("ByGame", (q) => q.eq("gameId", gameId))
+    .order("desc")
+    .first();
+  return (tail?.inputs ?? []).at(-1);
+}
+
+export async function handleTurn(
   ctx: MutationCtx,
-  tail: Doc<"inputs">,
-  input: Doc<"inputs">["inputs"]["0"]
+  gameId: Id<"game">,
+  phase: InProgressGame,
+  playerId: Id<"player">,
+  input: Operation
 ) {
-  if (tail.inputs.length > 500) {
+  const gameState = await getGameState(ctx, gameId);
+  const isPlayer1Turn = !gameState.state.isLastPlayerPlayer1;
+  if (isPlayer1Turn && phase.player1 !== playerId) {
+    throw new Error("Not current player's turn");
+  } else if (!isPlayer1Turn && phase.player2 !== playerId) {
+    throw new Error("Not current player's turn");
+  }
+
+  await addInput(ctx, gameId, {
+    isPlayer1: isPlayer1Turn,
+    operation: input,
+  });
+  const nextState = applyInput(gameState.state, {
+    operation: input,
+    isPlayer1: isPlayer1Turn,
+  });
+  await ctx.db.patch(gameState._id, {
+    state: nextState,
+  });
+  if (input.kind === "Finish") {
+    await ctx.db.patch(gameId, {
+      phase: {
+        status: "InputDone",
+        player1: phase.player1,
+        player2: phase.player2,
+        gameState: phase.gameState,
+      },
+    });
+  }
+}
+
+async function addInput(ctx: MutationCtx, gameId: Id<"game">, input: Input) {
+  const tail = await ctx.db
+    .query("inputs")
+    .withIndex("ByGame", (q) => q.eq("gameId", gameId))
+    .order("desc")
+    .first();
+  if (tail === null) {
     await ctx.db.insert("inputs", {
-      gameId: tail.gameId,
+      gameId: gameId,
+      inputs: [input],
+      rank: 0,
+    });
+  } else if (tail.inputs.length > 500) {
+    await ctx.db.insert("inputs", {
+      gameId: gameId,
       inputs: [input],
       rank: tail.rank + 1,
     });
@@ -205,11 +181,18 @@ export const recordResult = mutation({
     if (game.phase.status !== "InputDone") {
       throw new Error("Phase incorrect");
     }
+    console.log(args.testCaseResults);
+    const testResults = await ctx.db.insert("testResults", {
+      gameId: game._id,
+      results: args.testCaseResults,
+    });
     await ctx.db.patch(args.gameId, {
       phase: {
         status: "Done",
-        code: game.phase.code,
-        result: args.testCaseResults,
+        player1: game.phase.player1,
+        player2: game.phase.player2,
+        gameState: game.phase.gameState,
+        testResults: testResults,
       },
     });
   },

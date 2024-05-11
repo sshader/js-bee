@@ -1,5 +1,5 @@
 import { crud } from "convex-helpers/server";
-import schema, { problemValidator } from "./schema";
+import { problemValidator } from "./schema";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 export const { read, update, create } = crud(

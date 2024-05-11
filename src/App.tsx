@@ -11,7 +11,7 @@ import Player from "./Player";
 import ErrorPage from "./ErrorPage";
 import Game from "./Game";
 import ProblemEditor from "./ProblemEditor";
-import { Sheet, SheetHeader, SheetTitle } from "./components/ui/sheet";
+import { Sheet, SheetTitle } from "./components/ui/sheet";
 import { DotIcon, HomeIcon } from "@radix-ui/react-icons";
 import { Id } from "convex/_generated/dataModel";
 import { Card } from "./components/ui/card";
@@ -89,8 +89,11 @@ function Index() {
             {...ongoingGames.map(
               ({ game, player2Name, player1Name, problemSummary }) => {
                 const participating =
-                  game.player1 === player._id || game.player2 === player._id;
-                const canJoin = game.player2 === null && !participating;
+                  game.phase.player1 === player._id ||
+                  (game.phase.status !== "NotStarted" &&
+                    game.phase.player2 === player._id);
+                const canJoin =
+                  game.phase.status === "NotStarted" && !participating;
                 const summary = (
                   <div className="flex gap-2 items-center">
                     <div>{problemSummary}</div>
@@ -180,6 +183,7 @@ function Index() {
                   prompt:
                     "// Explain your problem here and give an example\nsolution({ a: 1, b: 2 }) // 3",
                   testCases: [{ args: { a: 1, b: 2 }, expected: 3 }],
+                  isPublished: false,
                 });
                 navigate(`/problems/${problem._id}`);
               };

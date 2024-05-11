@@ -1,15 +1,15 @@
 import { OpenAI } from "openai";
-import { internalAction, internalMutation } from "./_generated/server";
+import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error
-import levenshtein from "js-levenshtein";
-import { handleTurn } from "./engine";
+import { getGameState, getLastInput, handleTurn } from "./engine";
+import { internalMutation } from "./functions";
+import { Operation } from "../common/inputs";
+import { makeActionRetrier } from "convex-helpers/server/retries";
 
 function constructPrompt(problemPrompt: string, codeSnippet: string) {
   return `Please finish implementing this JavaScript function based on the following prompt. 
-Only include code and do not include explanations.
+Please include code for the full function and do not include explanations.
 
 Prompt:
 ${problemPrompt}
@@ -23,21 +23,33 @@ function solution(a) {
 export const takeTurn = internalMutation({
   args: {
     gameId: v.id("game"),
+    mustAnswer: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const game = await ctx.db.get(args.gameId);
-    if (game === null) {
-      throw new Error("Unknown game");
+    const game = await ctx.db.getX(args.gameId);
+    const phase = game.phase;
+    if (phase.status !== "Inputting") {
+      throw new Error("Game isn't in the inputting phase");
     }
-    const problem = await ctx.db.get(game.problemId);
-    if (problem === null) {
-      throw new Error("Unknown problem");
+    const problem = await ctx.db.getX(game.problemId);
+    const gameState = await getGameState(ctx, game._id);
+    const originalCode = gameState.state.code;
+
+    const lastInput = await getLastInput(ctx, game._id);
+    if (
+      !args.mustAnswer &&
+      lastInput?.operation.kind === "Delete" &&
+      lastInput.operation.numDeleted === 1
+    ) {
+      // Ask ChatGPT which will run this once it gets a real answer
+      await ctx.scheduler.runAfter(0, internal.openai.askAIWrapper, {
+        gameId: args.gameId,
+        prompt: problem.prompt,
+        codeSnippet: originalCode,
+      });
+      return;
     }
-    const codeDoc = (await ctx.db
-      .query("code")
-      .withIndex("ByGame", (q) => q.eq("gameId", game._id))
-      .unique())!;
-    const originalCode = codeDoc.code.substring(0, codeDoc.cursorPosition);
+
     const codeWithoutSpaces = originalCode.replaceAll(/\s+/g, "");
     const answers = await ctx.db
       .query("aiAnswers")
@@ -47,17 +59,21 @@ export const takeTurn = internalMutation({
       if (a.answer === null) {
         return false;
       }
-      if (a.solutionSnippet.startsWith(codeWithoutSpaces)) {
-        return true;
-      }
       const answerWithoutSpaces = a.answer
         .replaceAll(/\s+/g, "")
         .substring(0, codeWithoutSpaces.length);
       return answerWithoutSpaces.startsWith(codeWithoutSpaces);
     });
     if (answer === undefined) {
+      if (args.mustAnswer) {
+        // ChatGPT couldn't do it, so keep saying space lol
+        return handleTurn(ctx, game._id, phase, phase.player2, {
+          kind: "Add",
+          input: " ",
+        });
+      }
       // Ask ChatGPT which will run this once it gets a real answer
-      await ctx.scheduler.runAfter(0, internal.openai.askAI, {
+      await ctx.scheduler.runAfter(0, internal.openai.askAIWrapper, {
         gameId: args.gameId,
         prompt: problem.prompt,
         codeSnippet: originalCode,
@@ -66,33 +82,60 @@ export const takeTurn = internalMutation({
     }
     if (answer.answer === null || answer.answer === "") {
       // ChatGPT couldn't do it, so keep saying space lol
-      return handleTurn(ctx, game, game.player2!, " ");
+      return handleTurn(ctx, game._id, phase, phase.player2, {
+        kind: "Add",
+        input: " ",
+      });
     }
-    let nextChar: string | undefined = " ";
-    let bestMatch = Number.MAX_VALUE;
-    for (let i = 0; i <= answer.answer.length; i += 1) {
-      const m = levenshtein(
-        answer.answer.substring(0, i).replaceAll(/\s/g, ""),
-        codeWithoutSpaces
-      );
-      if (m < bestMatch) {
-        bestMatch = m;
-        if (i === answer.answer.length) {
-          nextChar = undefined;
-        } else {
-          nextChar = answer.answer[i];
+    let answerWithoutSpaces = "";
+    let i = 0;
+    while (i < answer.answer.length) {
+      if (codeWithoutSpaces === "") {
+        i = -1;
+        break;
+      }
+      const char = answer.answer[i];
+      if (!char.match(/\s/)) {
+        answerWithoutSpaces += answer.answer[i];
+      }
+      if (answerWithoutSpaces === codeWithoutSpaces) {
+        break;
+      }
+      i += 1;
+    }
+    let nextChar = undefined;
+    const lastChar = originalCode.at(-1);
+    console.log(i, answer.answer, codeWithoutSpaces);
+    for (let j = i + 1; j < answer.answer.length; j += 1) {
+      const char = answer.answer[j];
+
+      if (lastChar && lastChar.match(/\s/)) {
+        if (char !== lastChar) {
+          nextChar = char;
+          break;
         }
+      } else {
+        nextChar = char;
+        break;
       }
     }
-    console.log(nextChar, bestMatch);
-    let nextInput = nextChar === undefined ? "done" : nextChar;
-    if (nextChar === "\n") {
-      nextInput = "\\n";
-    } else if (nextChar === "\t") {
-      nextInput = "\\t";
-    }
-    console.log(nextInput);
-    return handleTurn(ctx, game, game.player2!, nextInput);
+    const nextInput: Operation =
+      nextChar === undefined
+        ? { kind: "Finish" }
+        : { kind: "Add", input: nextChar };
+    console.log(`Next input: ${JSON.stringify(nextInput)}`);
+    return handleTurn(ctx, game._id, phase, phase.player2, nextInput);
+  },
+});
+
+export const { runWithRetries, retry } = makeActionRetrier("openai:retry", {
+  maxFailures: 5,
+});
+
+export const askAIWrapper = internalMutation({
+  args: { gameId: v.id("game"), prompt: v.string(), codeSnippet: v.string() },
+  handler: async (ctx, args) => {
+    await runWithRetries(ctx, internal.openai.askAI, args);
   },
 });
 
@@ -129,7 +172,10 @@ export const askAI = internalAction({
       codeSnippet: args.codeSnippet,
       answer: answer,
     });
-    await ctx.runMutation(internal.openai.takeTurn, { gameId: args.gameId });
+    await ctx.runMutation(internal.openai.takeTurn, {
+      gameId: args.gameId,
+      mustAnswer: true,
+    });
   },
 });
 
@@ -164,6 +210,15 @@ export const recordAnswer = internalMutation({
   },
   handler: async (ctx, args) => {
     const codeWithoutSpaces = args.codeSnippet.replaceAll(/\s+/g, "");
+    const existingAnswers = await ctx.db
+      .query("aiAnswers")
+      .withIndex("ByPrompt", (q) => q.eq("prompt", args.prompt))
+      .collect();
+    for (const e of existingAnswers) {
+      if (e.solutionSnippet === codeWithoutSpaces) {
+        await ctx.db.delete(e._id);
+      }
+    }
     await ctx.db.insert("aiAnswers", {
       prompt: args.prompt,
       solutionSnippet: codeWithoutSpaces,

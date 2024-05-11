@@ -36,7 +36,7 @@ export const scoreCode = async (
       if (actual === t.expected) {
         return { status: "Passed" }
       } else {
-        return { status: "ResultIncorrect", actual }
+        return { status: "ResultIncorrect", actual: actual === undefined ? "undefined" : actual }
       }
     } catch (e) {
       return { status: "ExecutionFailed", error: e.message ?? "" }
