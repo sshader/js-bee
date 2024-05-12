@@ -18,10 +18,11 @@ npm create convex@latest -t react-vite-shadcn
 - Full crud UI for deleting problems
 
 - Fix character parsing lol
-- Copy link button
 - Clean up inactive games
 
-- Show recent finished games
 - Empty state for no games
 
-- More AIs????
+- Ability to delete a game or un-stick a bot game
+- Retries on AI responses with increasing temperature
+- Introspection into the AI answers
+- Full explainer page
