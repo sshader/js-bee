@@ -177,8 +177,10 @@ export const takeTurn = internalMutation({
     const problem = await ctx.db.getX(game.problemId);
     const gameState = await getGameState(ctx, game._id);
     const originalCode = gameState.state.code;
+    const bothBots =
+      player1.botType !== undefined && player2.botType !== undefined;
 
-    if (player1.botType !== undefined && player2.botType !== undefined) {
+    if (bothBots) {
       if (originalCode.length >= parseInt(process.env.MAX_BOT_V_BOT ?? "100")) {
         // avoid looping too much for bot vs. bot games
         return handleTurn(ctx, {
@@ -214,14 +216,19 @@ export const takeTurn = internalMutation({
       if (a.answer === null) {
         return false;
       }
-      const answerWithoutSpaces = a.answer
-        .replaceAll(/\s+/g, "")
-        .substring(0, codeWithoutSpaces.length);
-      return answerWithoutSpaces.startsWith(codeWithoutSpaces);
+      if (bothBots) {
+        return a.answer.startsWith(originalCode);
+      } else {
+        const answerWithoutSpaces = a.answer
+          .replaceAll(/\s+/g, "")
+          .substring(0, codeWithoutSpaces.length);
+        return answerWithoutSpaces.startsWith(codeWithoutSpaces);
+      }
     });
     if (answer === undefined) {
       if (args.mustAnswer) {
         // Bot couldn't do it, so keep saying space lol
+        console.log("Couldn't find suitable answer");
         return handleTurn(ctx, {
           gameId: game._id,
           playerId: args.playerId,
@@ -241,55 +248,18 @@ export const takeTurn = internalMutation({
     }
     if (answer.answer === null || answer.answer === "") {
       // Bot couldn't do it, so keep saying space lol
+      console.log("Couldn't find suitable answer");
       return handleTurn(ctx, {
         gameId: game._id,
         playerId: args.playerId,
         input: " ",
       });
     }
-    let answerWithoutSpaces = "";
-    let i = 0;
-    while (i < answer.answer.length) {
-      if (codeWithoutSpaces === "") {
-        i = -1;
-        break;
-      }
-      const char = answer.answer[i];
-      if (!char.match(/\s/)) {
-        answerWithoutSpaces += answer.answer[i];
-      }
-      if (answerWithoutSpaces === codeWithoutSpaces) {
-        break;
-      }
-      i += 1;
-    }
-    let nextChar = undefined;
-    const lastChar = originalCode.at(-1);
-    console.log(i, answer.answer, codeWithoutSpaces);
-    for (let j = i + 1; j < answer.answer.length; j += 1) {
-      const char = answer.answer[j];
-
-      // Don't follow whitespace with whitespace
-      if (lastChar && lastChar.match(/\s/)) {
-        if (!char.match(/\s/)) {
-          nextChar = char;
-          break;
-        }
-      } else {
-        nextChar = char;
-        break;
-      }
-    }
-    let nextInput: string = " ";
-    if (nextChar === undefined) {
-      nextInput = "done";
-    } else if (nextChar === "\n") {
-      nextInput = "\\n";
-    } else if (nextChar === "\t") {
-      nextInput = "\\t";
-    } else {
-      nextInput = nextChar;
-    }
+    const nextInput: string = getNextInputString(
+      answer.answer,
+      originalCode,
+      bothBots
+    );
     console.log(`Next input: '${nextInput}'`);
     return handleTurn(ctx, {
       gameId: game._id,
@@ -298,6 +268,55 @@ export const takeTurn = internalMutation({
     });
   },
 });
+
+function getNextInputString(answer: string, code: string, bothBots: boolean) {
+  const codePrefix = bothBots ? code : code.replaceAll(/\s+/g, "");
+  let answerPrefix = "";
+  let i = 0;
+  while (i < answer.length) {
+    if (codePrefix === "") {
+      i = -1;
+      break;
+    }
+    const char = answer[i];
+    if (bothBots) {
+      answerPrefix += char;
+    } else if (!char.match(/\s/)) {
+      answerPrefix += char;
+    }
+    if (answerPrefix === codePrefix) {
+      break;
+    }
+    i += 1;
+  }
+  let nextChar = undefined;
+  const lastChar = code.at(-1);
+  for (let j = i + 1; j < answer.length; j += 1) {
+    const char = answer[j];
+
+    // Don't follow whitespace with whitespace
+    if (!bothBots && lastChar && lastChar.match(/\s/)) {
+      if (!char.match(/\s/)) {
+        nextChar = char;
+        break;
+      }
+    } else {
+      nextChar = char;
+      break;
+    }
+  }
+  let nextInput: string = " ";
+  if (nextChar === undefined) {
+    nextInput = "done";
+  } else if (nextChar === "\n") {
+    nextInput = "\\n";
+  } else if (nextChar === "\t") {
+    nextInput = "\\t";
+  } else {
+    nextInput = nextChar;
+  }
+  return nextInput;
+}
 
 export const getOrCreateBotPlayer = async (
   ctx: MutationCtx,
