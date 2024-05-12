@@ -76,10 +76,13 @@ export default defineSchema({
     name: v.string(),
     sessionId: v.string(),
     botType: v.optional(v.string()),
-  }).index("BySession", ["sessionId"]),
+  })
+    .index("BySession", ["sessionId"])
+    .index("ByBot", ["botType"]),
   aiAnswers: defineTable({
     prompt: v.string(),
+    botType: v.optional(v.string()),
     solutionSnippet: v.string(),
     answer: v.union(v.string(), v.null()),
-  }).index("ByPrompt", ["prompt"]),
+  }).index("ByBotAndPrompt", ["botType", "prompt"]),
 });

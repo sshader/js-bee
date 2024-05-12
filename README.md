@@ -16,13 +16,12 @@ npm create convex@latest -t react-vite-shadcn
 # TODO
 
 - Full crud UI for deleting problems
-- Games should include player names
-- Make it easier to set player names
 
 - Fix character parsing lol
-- Unify logic for replaying + transforming code
-- Overall better UI lol
 - Copy link button
-- Make everything collapsible
 - Clean up inactive games
-- Better UI for last input vs. waiting
+
+- Show recent finished games
+- Empty state for no games
+
+- More AIs????

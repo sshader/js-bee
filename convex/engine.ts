@@ -12,43 +12,7 @@ export const takeTurn = mutation({
     input: v.string(),
   },
   handler: async (ctx, args) => {
-    const game = await ctx.db.getX(args.gameId);
-    const phase = game.phase;
-    if (phase.status !== "Inputting") {
-      throw new Error("Game isn't in the inputting phase");
-    }
-    const gameStateBefore = await getGameState(ctx, game._id);
-    await handleTurn(
-      ctx,
-      game._id,
-      phase,
-      args.playerId,
-      parseInput(args.input, gameStateBefore.state.code)
-    );
-
-    const gameStateAfter = await getGameState(ctx, game._id);
-
-    if (gameStateAfter.state.isDone) {
-      return;
-    }
-    const nextPlayerId = gameStateAfter.state.isLastPlayerPlayer1
-      ? phase.player2
-      : phase.player1;
-    const shouldSkip = gameStateAfter.state.isLastPlayerPlayer1
-      ? gameStateAfter.state.player2Skips > 0
-      : gameStateAfter.state.player1Skips > 0;
-    if (shouldSkip) {
-      await handleTurn(ctx, game._id, phase, nextPlayerId, { kind: "Skipped" });
-      return;
-    }
-    const nextPlayer = await ctx.db.getX(nextPlayerId);
-    if (nextPlayer.botType !== undefined) {
-      // TODO: handle more bot types
-      await ctx.scheduler.runAfter(0, internal.openai.takeTurn, {
-        gameId: game._id,
-        mustAnswer: false,
-      });
-    }
+    return handleTurn(ctx, args);
   },
 });
 
@@ -103,6 +67,49 @@ export async function getLastInput(ctx: QueryCtx, gameId: Id<"game">) {
 }
 
 export async function handleTurn(
+  ctx: MutationCtx,
+  args: { gameId: Id<"game">; playerId: Id<"player">; input: string }
+) {
+  const game = await ctx.db.getX(args.gameId);
+  const phase = game.phase;
+  if (phase.status !== "Inputting") {
+    throw new Error("Game isn't in the inputting phase");
+  }
+  const gameStateBefore = await getGameState(ctx, game._id);
+  await _handleTurn(
+    ctx,
+    game._id,
+    phase,
+    args.playerId,
+    parseInput(args.input, gameStateBefore.state.code)
+  );
+
+  const gameStateAfter = await getGameState(ctx, game._id);
+
+  if (gameStateAfter.state.isDone) {
+    return;
+  }
+  const nextPlayerId = gameStateAfter.state.isLastPlayerPlayer1
+    ? phase.player2
+    : phase.player1;
+  const shouldSkip = gameStateAfter.state.isLastPlayerPlayer1
+    ? gameStateAfter.state.player2Skips > 0
+    : gameStateAfter.state.player1Skips > 0;
+  if (shouldSkip) {
+    await _handleTurn(ctx, game._id, phase, nextPlayerId, { kind: "Skipped" });
+    return;
+  }
+  const nextPlayer = await ctx.db.getX(nextPlayerId);
+  if (nextPlayer.botType !== undefined) {
+    await ctx.scheduler.runAfter(0, internal.ai.common.takeTurn, {
+      gameId: game._id,
+      playerId: nextPlayer._id,
+      mustAnswer: false,
+    });
+  }
+}
+
+async function _handleTurn(
   ctx: MutationCtx,
   gameId: Id<"game">,
   phase: InProgressGame,

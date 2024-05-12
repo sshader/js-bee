@@ -63,7 +63,7 @@ function App() {
 }
 
 function Index() {
-  const ongoingGames = useQuery(api.games.ongoingGames) ?? [];
+  const recentGames = useQuery(api.games.recentGames) ?? [];
   const joinGame = useMutation(api.games.joinGame);
   const startGame = useMutation(api.games.startGame);
   const problems = useQuery(api.problems.list) ?? [];
@@ -86,7 +86,7 @@ function Index() {
         <Sheet>
           <SheetTitle>Ongoing Games</SheetTitle>
           <div className="flex flex-col flex-1 min-h-0 gap-2 w-full overflow-auto">
-            {...ongoingGames.map(
+            {...recentGames.map(
               ({ game, player2Name, player1Name, problemSummary }) => {
                 const participating =
                   game.phase.player1 === player._id ||
@@ -122,9 +122,9 @@ function Index() {
                       className="flex items-center justify-between gap-4 text-center w-full p-2"
                     >
                       {summary}
-                      <Button
-                        onClick={() => navigate(`/games/${game._id}`)}
-                      >{`Rejoin`}</Button>
+                      <Button onClick={() => navigate(`/games/${game._id}`)}>
+                        {game.phase.status === "Done" ? "Rewatch" : "Rejoin"}
+                      </Button>
                     </Card>
                   );
                 }

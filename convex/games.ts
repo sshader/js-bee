@@ -3,14 +3,15 @@ import { query, mutation, MutationCtx } from "./functions";
 import { Id } from "./_generated/dataModel";
 import { getGameState } from "./engine";
 import { getInitialState } from "../common/inputs";
+import { getOrCreateBotPlayer } from "./ai/common";
+import { internal } from "./_generated/api";
 
-export const ongoingGames = query({
+export const recentGames = query({
   args: {},
   handler: async (ctx, _args) => {
-    const allGames = await ctx.db.query("game").collect();
-    const ongoingGames = allGames.filter((g) => g.phase.status !== "Done");
+    const allGames = await ctx.db.query("game").take(20);
     return Promise.all(
-      ongoingGames.map(async (game) => {
+      allGames.map(async (game) => {
         const player1 = await ctx.db.getX(game.phase.player1);
 
         const player2 =
@@ -39,6 +40,30 @@ export const startGame = mutation({
     const gameId = await ctx.db.insert("game", {
       problemId: problem._id,
       phase: { status: "NotStarted", player1: args.playerId },
+    });
+    return gameId;
+  },
+});
+
+export const startBotGame = mutation({
+  args: {
+    bot1: v.string(),
+    bot2: v.string(),
+    problemId: v.id("problem"),
+  },
+  handler: async (ctx, args) => {
+    const problem = await ctx.db.getX(args.problemId);
+    const bot1 = await getOrCreateBotPlayer(ctx, args.bot1, args.bot1);
+    const bot2 = await getOrCreateBotPlayer(ctx, args.bot1, args.bot2);
+    const gameId = await ctx.db.insert("game", {
+      problemId: problem._id,
+      phase: { status: "NotStarted", player1: bot1 },
+    });
+    await joinGame(ctx, { gameId, playerId: bot2 });
+    await ctx.scheduler.runAfter(0, internal.ai.common.takeTurn, {
+      gameId,
+      playerId: bot1,
+      mustAnswer: false,
     });
     return gameId;
   },
@@ -77,22 +102,18 @@ async function addPlayerToGame(
   });
 }
 
-export const inviteChatGpt = mutation({
+export const inviteBot = mutation({
   args: {
     gameId: v.id("game"),
+    botType: v.string(),
   },
   handler: async (ctx, args) => {
-    const players = await ctx.db.query("player").collect();
-    const gptPlayer = players.find((p) => p.botType === "ChatGPT");
-    const gptPlayerId =
-      gptPlayer === undefined
-        ? await ctx.db.insert("player", {
-            sessionId: crypto.randomUUID(),
-            botType: "ChatGPT",
-            name: "ChatGPT",
-          })
-        : gptPlayer._id;
-    return addPlayerToGame(ctx, args.gameId, gptPlayerId);
+    const playerId = await getOrCreateBotPlayer(
+      ctx,
+      args.botType,
+      args.botType
+    );
+    return addPlayerToGame(ctx, args.gameId, playerId);
   },
 });
 

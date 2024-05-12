@@ -14,10 +14,12 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as ai_chatgpt from "../ai/chatgpt.js";
+import type * as ai_claude from "../ai/claude.js";
+import type * as ai_common from "../ai/common.js";
 import type * as engine from "../engine.js";
 import type * as functions from "../functions.js";
 import type * as games from "../games.js";
-import type * as openai from "../openai.js";
 import type * as players from "../players.js";
 import type * as problems from "../problems.js";
 
@@ -30,10 +32,12 @@ import type * as problems from "../problems.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "ai/chatgpt": typeof ai_chatgpt;
+  "ai/claude": typeof ai_claude;
+  "ai/common": typeof ai_common;
   engine: typeof engine;
   functions: typeof functions;
   games: typeof games;
-  openai: typeof openai;
   players: typeof players;
   problems: typeof problems;
 }>;

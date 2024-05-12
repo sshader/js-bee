@@ -12,7 +12,12 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Card, CardTitle } from "./components/ui/card";
-import { ChevronDownIcon, ChevronRightIcon } from "@radix-ui/react-icons";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  Link1Icon,
+  Link2Icon,
+} from "@radix-ui/react-icons";
 import { CodeBlock } from "./components/CodeBlock";
 import { Separator } from "@radix-ui/react-separator";
 import { Link } from "./components/typography/link";
@@ -24,6 +29,7 @@ import {
   applyInput,
   getInitialState,
 } from "../common/inputs";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
 const makeCodeBlock = (body: string) => {
   return `function solution(a) {\n\t${body}\n}`;
@@ -32,7 +38,7 @@ const makeCodeBlock = (body: string) => {
 function Game() {
   const player = useCurrentPlayer();
   const joinGame = useMutation(api.games.joinGame);
-  const inviteGpt = useMutation(api.games.inviteChatGpt);
+  const inviteBot = useMutation(api.games.inviteBot);
 
   const { gameId } = useParams();
   const gameInfo = useQuery(api.games.gameInfo, { gameId: gameId! });
@@ -55,16 +61,46 @@ function Game() {
             {`${gameInfo.player2.name} ${player._id === gameInfo.player2._id ? "(You)" : ""}`}
           </div>
         ) : player._id === gameInfo.player1?._id ? (
-          <Button
-            onClick={() => {
-              void inviteGpt({
-                gameId: gameInfo.game._id,
-              });
-            }}
-            variant="secondary"
-          >
-            Invite ChatGPT
-          </Button>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger>
+              <Button variant="secondary">Invite</Button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content align="start">
+              <Card className="flex flex-col">
+                <DropdownMenu.Item
+                  className="py-2 px-4"
+                  onClick={() => {
+                    void inviteBot({
+                      gameId: gameInfo.game._id,
+                      botType: "chatgpt",
+                    });
+                  }}
+                >
+                  Invite ChatGPT
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="py-2 px-4"
+                  onClick={() => {
+                    void inviteBot({
+                      gameId: gameInfo.game._id,
+                      botType: "claude",
+                    });
+                  }}
+                >
+                  Invite Claude
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  className="py-2 px-4 flex items-center gap-2"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(window.location.href);
+                  }}
+                >
+                  Copy link
+                  <Link2Icon />
+                </DropdownMenu.Item>
+              </Card>
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
         ) : (
           <Button
             onClick={() => {
@@ -193,9 +229,27 @@ function Playback({ inputs }: { inputs: Array<Input> }) {
 
 function Result({ game }: { game: Doc<"game"> }) {
   const player = useCurrentPlayer();
+  const joinGame = useMutation(api.games.joinGame);
   switch (game.phase.status) {
-    case "NotStarted":
-      return "Waiting for two players...";
+    case "NotStarted": {
+      if (player._id === game.phase.player1) {
+        return <Invite gameId={game._id} />;
+      } else {
+        return (
+          <Card>
+            This game needs another player!
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void joinGame({ gameId: game._id, playerId: player._id });
+              }}
+            >
+              Join
+            </Button>
+          </Card>
+        );
+      }
+    }
     case "InputDone": {
       return <Scoring gameId={game._id} />;
     }
@@ -304,6 +358,48 @@ function Scoring({ gameId }: { gameId: Id<"game"> }) {
         </form>
       </div>
     </CollapsibleCard>
+  );
+}
+
+function Invite({ gameId }: { gameId: Id<"game"> }) {
+  const inviteBot = useMutation(api.games.inviteBot);
+  return (
+    <Card className="flex flex-col gap-4 p-2">
+      Waiting for another player. Want to invite one?
+      <div className="flex w-full gap-4">
+        <Button
+          variant="secondary"
+          onClick={() => {
+            void inviteBot({
+              gameId,
+              botType: "chatgpt",
+            });
+          }}
+        >
+          Invite ChatGPT
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            void inviteBot({
+              gameId,
+              botType: "claude",
+            });
+          }}
+        >
+          Invite Claude
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            void navigator.clipboard.writeText(window.location.href);
+          }}
+        >
+          Copy link
+          <Link2Icon />
+        </Button>
+      </div>
+    </Card>
   );
 }
 
