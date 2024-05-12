@@ -9,7 +9,7 @@ import { internal } from "./_generated/api";
 export const recentGames = query({
   args: {},
   handler: async (ctx, _args) => {
-    const allGames = await ctx.db.query("game").take(20);
+    const allGames = await ctx.db.query("game").order("desc").take(10);
     return Promise.all(
       allGames.map(async (game) => {
         const player1 = await ctx.db.getX(game.phase.player1);
@@ -54,7 +54,7 @@ export const startBotGame = mutation({
   handler: async (ctx, args) => {
     const problem = await ctx.db.getX(args.problemId);
     const bot1 = await getOrCreateBotPlayer(ctx, args.bot1, args.bot1);
-    const bot2 = await getOrCreateBotPlayer(ctx, args.bot1, args.bot2);
+    const bot2 = await getOrCreateBotPlayer(ctx, args.bot2, args.bot2);
     const gameId = await ctx.db.insert("game", {
       problemId: problem._id,
       phase: { status: "NotStarted", player1: bot1 },

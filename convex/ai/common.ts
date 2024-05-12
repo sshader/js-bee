@@ -179,7 +179,7 @@ export const takeTurn = internalMutation({
     const originalCode = gameState.state.code;
 
     if (player1.botType !== undefined && player2.botType !== undefined) {
-      if (originalCode.length >= 100) {
+      if (originalCode.length >= parseInt(process.env.MAX_BOT_V_BOT ?? "100")) {
         // avoid looping too much for bot vs. bot games
         return handleTurn(ctx, {
           gameId: game._id,

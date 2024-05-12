@@ -15,6 +15,7 @@ import { Sheet, SheetTitle } from "./components/ui/sheet";
 import { DotIcon, HomeIcon } from "@radix-ui/react-icons";
 import { Id } from "convex/_generated/dataModel";
 import { Card } from "./components/ui/card";
+import { useEffect } from "react";
 
 const router = createBrowserRouter([
   {
@@ -39,6 +40,26 @@ const router = createBrowserRouter([
 ]);
 
 function App() {
+  useEffect(() => {
+    const listener = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        document.documentElement.classList.add("dark");
+        document.documentElement.classList.remove("light");
+        document.documentElement.setAttribute("data-color-mode", "dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+        document.documentElement.classList.add("light");
+        document.documentElement.setAttribute("data-color-mode", "light");
+      }
+    };
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", listener);
+    return () =>
+      window
+        .matchMedia("(prefers-color-scheme: dark)")
+        .removeEventListener("change", listener);
+  });
   return (
     <main className="font-mono flex flex-col gap-8 h-[100vh] w-[100vw] overflow-auto p-10">
       <Sheet>

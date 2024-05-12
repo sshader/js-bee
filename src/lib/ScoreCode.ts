@@ -1,5 +1,9 @@
 import { shouldInterruptAfterDeadline } from "quickjs-emscripten";
 
+export const wrapInFunction = (body: string) => {
+  return `function solution(a) {\n\t${body}\n}`;
+};
+
 export const ensureQuickJsReady = async () => {
   for (let i = 0; i < 10; i += 1) {
     try {
