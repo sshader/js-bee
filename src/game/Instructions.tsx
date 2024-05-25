@@ -2,7 +2,7 @@ import { Link } from "@/components/typography/link";
 
 export function Instructions() {
   return (
-    <div>
+    <div className="text-sm">
       <p>
         This is a{" "}
         <Link

@@ -3,8 +3,8 @@ import {
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
-import * as VanillaConvex from "./_generated/server";
-import { Doc, Id, TableNames } from "./_generated/dataModel";
+import * as VanillaConvex from "../_generated/server";
+import { Doc, Id, TableNames } from "../_generated/dataModel";
 
 export type DatbaseReader = VanillaConvex.DatabaseReader & {
   getX: <T extends TableNames>(

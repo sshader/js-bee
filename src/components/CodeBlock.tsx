@@ -22,7 +22,7 @@ export function CodeBlock({ text }: { text: string }) {
         .removeEventListener("change", listener);
   });
   return (
-    <div className="font-mono">
+    <div className="font-mono text-sm">
       <ReactCodeBlock
         text={text}
         language={"js"}

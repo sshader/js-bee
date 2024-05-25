@@ -18,10 +18,13 @@ import type * as ai_chatgpt from "../ai/chatgpt.js";
 import type * as ai_claude from "../ai/claude.js";
 import type * as ai_common from "../ai/common.js";
 import type * as engine from "../engine.js";
-import type * as functions from "../functions.js";
 import type * as games from "../games.js";
+import type * as lib_assert from "../lib/assert.js";
+import type * as lib_functions from "../lib/functions.js";
+import type * as migrations from "../migrations.js";
 import type * as players from "../players.js";
 import type * as problems from "../problems.js";
+import type * as schedule from "../schedule.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -36,10 +39,13 @@ declare const fullApi: ApiFromModules<{
   "ai/claude": typeof ai_claude;
   "ai/common": typeof ai_common;
   engine: typeof engine;
-  functions: typeof functions;
   games: typeof games;
+  "lib/assert": typeof lib_assert;
+  "lib/functions": typeof lib_functions;
+  migrations: typeof migrations;
   players: typeof players;
   problems: typeof problems;
+  schedule: typeof schedule;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

@@ -15,12 +15,12 @@ function Controls({ game }: { game: Doc<"game"> }) {
     return <Skeleton />;
   }
 
-  if (game.phase.status !== "Inputting" || result === null) {
+  if (game.status !== "Inputting" || result === null) {
     return "";
   }
   const { isCurrentPlayersTurn, lastPartnerInput } = result;
 
-  if (game.phase.player1 === player._id) {
+  if (game.player1 === player._id) {
     return (
       <div className="flex gap-2">
         <InputForm

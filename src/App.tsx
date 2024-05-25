@@ -1,27 +1,34 @@
-import { Button } from "@/components/ui/button";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
-import {
-  RouterProvider,
-  createBrowserRouter,
-  useNavigate,
-} from "react-router-dom";
-import { useCurrentPlayer } from "./lib/PlayerProvider";
-import Player from "./Player";
+import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import ErrorPage from "./ErrorPage";
-import Game from "./Game";
+import Game, { GameState, Prompt } from "./Game";
 import ProblemEditor from "./ProblemEditor";
-import { Sheet, SheetTitle } from "./components/ui/sheet";
-import { DotIcon, HomeIcon } from "@radix-ui/react-icons";
-import { Id } from "convex/_generated/dataModel";
-import { Card } from "./components/ui/card";
+import ScheduleGame from "./ScheduleGame";
+import { Sheet } from "./components/ui/sheet";
+import { DotIcon } from "@radix-ui/react-icons";
 import { useEffect } from "react";
+import Header from "./Header";
+import {
+  ScheduleGameButton,
+  StartGame,
+  SeeOngoingGames,
+} from "./game/StartButtons";
+import { CollapsibleCard } from "./components/CollapsibleCard";
+import { Instructions } from "./game/Instructions";
+import { Skeleton } from "./components/ui/skeleton";
 import { Link } from "./components/typography/link";
+import OngoingGames from "./OngoingGames";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <Index />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: "/ongoing",
+    element: <OngoingGames />,
     errorElement: <ErrorPage />,
   },
   {
@@ -32,6 +39,11 @@ const router = createBrowserRouter([
   {
     path: "problems/:problemId",
     element: <ProblemEditor />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: "schedule/:scheduledGameId",
+    element: <ScheduleGame />,
     errorElement: <ErrorPage />,
   },
   {
@@ -64,21 +76,6 @@ function App() {
   return (
     <main className="font-mono flex flex-col gap-8 h-[100vh] w-[100vw] overflow-auto p-10">
       <Sheet>
-        <SheetTitle className="flex justify-between">
-          <div className="flex gap-2 items-center">
-            <Button
-              variant="outline"
-              onClick={() => {
-                void router.navigate("/");
-              }}
-            >
-              <HomeIcon />
-            </Button>
-            <div>JS Bee</div>
-          </div>
-          <Player />
-        </SheetTitle>
-
         <RouterProvider router={router} />
       </Sheet>
     </main>
@@ -86,153 +83,51 @@ function App() {
 }
 
 function Index() {
-  const recentGames = useQuery(api.games.recentGames) ?? [];
-  const joinGame = useMutation(api.games.joinGame);
-  const startGame = useMutation(api.games.startGame);
-  const problems = useQuery(api.problems.list) ?? [];
-  const createProblem = useMutation(api.problems.create);
-  const navigate = useNavigate();
-
-  const player = useCurrentPlayer();
-
-  const handleJoinGame = async (gameId: Id<"game">) => {
-    await joinGame({
-      playerId: player._id,
-      gameId,
-    });
-    navigate(`/games/${gameId}`);
-  };
+  const gameInfo = useQuery(api.games.featureGameInfo);
 
   return (
     <div>
-      <div className="flex gap-4 text-center items-start w-full h-full overflow-hidden">
+      <Header>
+        <div className="flex p-2 gap-2 justify-center">
+          <StartGame />
+          <ScheduleGameButton />
+          <SeeOngoingGames />
+        </div>
+      </Header>
+      {gameInfo === undefined ? (
+        <Skeleton />
+      ) : (
         <div className="flex flex-col w-full h-full">
-          <Sheet>
-            <SheetTitle>Ongoing Games</SheetTitle>
-            <div className="flex flex-col flex-1 min-h-0 gap-2 w-full overflow-auto">
-              {...recentGames.map(
-                ({ game, player2Name, player1Name, problemSummary }) => {
-                  const participating =
-                    game.phase.player1 === player._id ||
-                    (game.phase.status !== "NotStarted" &&
-                      game.phase.player2 === player._id);
-                  const canJoin =
-                    game.phase.status === "NotStarted" && !participating;
-                  const summary = (
-                    <div className="flex gap-2 items-center">
-                      <div>{problemSummary}</div>
-                      <DotIcon />
-                      <div>{`${player1Name ?? "No one"} vs. ${player2Name ?? "No one"}`}</div>
-                    </div>
-                  );
-                  if (canJoin) {
-                    return (
-                      <Card
-                        key={game._id}
-                        className="flex items-center justify-between gap-4 text-center w-full p-2"
-                      >
-                        {summary}
-                        <Button
-                          variant="default"
-                          onClick={() => void handleJoinGame(game._id)}
-                        >{`Join`}</Button>
-                      </Card>
-                    );
-                  }
-                  if (participating) {
-                    return (
-                      <Card
-                        key={game._id}
-                        className="flex items-center justify-between gap-4 text-center w-full p-2"
-                      >
-                        {summary}
-                        <Button onClick={() => navigate(`/games/${game._id}`)}>
-                          {game.phase.status === "Done" ? "Rewatch" : "Rejoin"}
-                        </Button>
-                      </Card>
-                    );
-                  }
-                  return (
-                    <Card
-                      key={game._id}
-                      className="flex items-center justify-between gap-4 text-center w-full p-2"
-                    >
-                      {summary}
-                      <Button
-                        variant="secondary"
-                        onClick={() => navigate(`/games/${game._id}`)}
-                      >{`Watch`}</Button>
-                    </Card>
-                  );
-                }
-              )}
-            </div>
-          </Sheet>
-        </div>
+          <div className="flex flex-1 min-w-0 flex-col gap-4">
+            <CollapsibleCard header={"How to play:"} startOpen>
+              <Instructions />
+            </CollapsibleCard>
 
-        <div className="flex flex-col gap-2 w-full h-full">
-          <Sheet>
-            <SheetTitle>Problems</SheetTitle>
-            <div className="flex flex-col flex-shrink-1 min-h-0 gap-2 overflow-auto">
-              {...problems.map((p) => {
-                return (
-                  <Card
-                    className="flex gap-2 items-center p-2 w-full justify-between"
-                    key={p._id}
-                  >
-                    <div>{p.summary ?? p.prompt.substring(0, 50)}</div>
-                    <Button
-                      onClick={() => {
-                        const f = async () => {
-                          const gameId = await startGame({
-                            playerId: player._id,
-                            problemId: p._id,
-                          });
-                          navigate(`/games/${gameId}`);
-                        };
-                        void f();
-                      }}
-                    >
-                      New game
-                    </Button>
-                  </Card>
-                );
-              })}
-            </div>
-            <Button
-              className="ml-auto mr-auto"
-              onClick={() => {
-                const f = async () => {
-                  const problem = await createProblem({
-                    prompt:
-                      "// Explain your problem here and give an example\nsolution({ a: 1, b: 2 }) // 3",
-                    testCases: [{ args: { a: 1, b: 2 }, expected: 3 }],
-                    isPublished: false,
-                  });
-                  navigate(`/problems/${problem._id}`);
-                };
-                void f();
-              }}
-            >
-              New problem
-            </Button>
-          </Sheet>
+            <GameState game={gameInfo.game} />
+
+            <Prompt
+              problemPrompt={gameInfo.problemPrompt}
+              startOpen
+              game={gameInfo.game}
+            />
+          </div>
         </div>
-        <div className="absolute bottom-2 right-2">
-          <div className="flex gap-2 items-center">
-            <div>
-              Made by{" "}
-              <Link href="https://github.com/sshader/" target="_blank">
-                Sarah Shader
-              </Link>
-            </div>
-            <DotIcon />
-            <div>
-              Powered by{" "}
-              <Link href="https://www.convex.dev/" target="_blank">
-                Convex
-              </Link>
-            </div>
+      )}
+
+      <div className="absolute bottom-0 right-0 bg-background p-2">
+        <div className="flex gap-2 items-center">
+          <div>
+            Made by{" "}
+            <Link href="https://github.com/sshader/" target="_blank">
+              Sarah Shader
+            </Link>
+          </div>
+          <DotIcon />
+          <div>
+            Powered by{" "}
+            <Link href="https://www.convex.dev/" target="_blank">
+              Convex
+            </Link>
           </div>
         </div>
       </div>

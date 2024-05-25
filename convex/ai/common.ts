@@ -1,9 +1,8 @@
 import { makeActionRetrier } from "convex-helpers/server/retries";
-import { MutationCtx, internalMutation } from "../functions";
+import { MutationCtx, internalMutation } from "../lib/functions";
 import { Infer, v } from "convex/values";
 import { getGameState, getLastInput, handleTurn } from "../engine";
 import { FunctionReference, makeFunctionReference } from "convex/server";
-import { Operation } from "../../common/inputs";
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 
@@ -154,15 +153,14 @@ export const takeTurn = internalMutation({
   },
   handler: async (ctx, args) => {
     const game = await ctx.db.getX(args.gameId);
-    const phase = game.phase;
-    if (phase.status !== "Inputting") {
+    if (game.status !== "Inputting") {
       throw new Error("Game isn't in the inputting phase");
     }
-    if (phase.player1 !== args.playerId && phase.player2 !== args.playerId) {
+    if (game.player1 !== args.playerId && game.player2 !== args.playerId) {
       throw new Error("Bot isn't playing this game");
     }
-    const player1 = await ctx.db.getX(phase.player1);
-    const player2 = await ctx.db.getX(phase.player2);
+    const player1 = await ctx.db.getX(game.player1);
+    const player2 = await ctx.db.getX(game.player2);
 
     const player = player1._id == args.playerId ? player1 : player2;
     const botType = player.botType;
@@ -174,6 +172,9 @@ export const takeTurn = internalMutation({
       "internal",
       { args: AskBotArgs }
     > = makeFunctionReference(`ai/${botType}:askBotWrapper`) as any;
+    if (game.status !== "Inputting") {
+      throw new Error("Unexpected phase");
+    }
     const problem = await ctx.db.getX(game.problemId);
     const gameState = await getGameState(ctx, game._id);
     const originalCode = gameState.state.code;

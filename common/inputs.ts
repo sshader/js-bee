@@ -67,7 +67,9 @@ export function applyInput(state: State, input: Input) {
     case "Add": {
       return {
         ...nextState,
-        code: state.code + input.operation.input,
+        code:
+          state.code +
+          (input.operation.input === "\n" ? "\n\t" : input.operation.input),
       };
     }
     case "Skipped": {

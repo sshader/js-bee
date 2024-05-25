@@ -26,14 +26,12 @@ function ProblemEditor() {
 }
 
 function Inner({ problem }: { problem: Doc<"problem"> }) {
-  const player = useCurrentPlayer();
   const [code, setCode] = useState(problem.prompt);
   const [summary, setSummary] = useState(problem.summary);
   const [testCases, setTestCases] = useState(
     JSON.stringify(problem.testCases, null, 2)
   );
   const updateProblem = useMutation(api.problems.update);
-  const startGame = useMutation(api.games.startGame);
   const navigate = useNavigate();
   return (
     <div className="flex flex-col gap-5">
@@ -58,11 +56,7 @@ function Inner({ problem }: { problem: Doc<"problem"> }) {
                 testCases: parsedTestCases,
               },
             });
-            const gameId = await startGame({
-              playerId: player._id,
-              problemId: problem._id,
-            });
-            navigate(`/games/${gameId}`);
+            navigate(-1);
           };
           void f();
         }}
@@ -101,7 +95,7 @@ function Inner({ problem }: { problem: Doc<"problem"> }) {
           />
         </div>
         <Button type="submit" className="m-auto">
-          Publish and start game
+          Save
         </Button>
       </form>
     </div>

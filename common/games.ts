@@ -5,16 +5,30 @@ const inProgressDef = v.object({
   player1: v.id("player"),
   player2: v.id("player"),
   gameState: v.id("gameState"),
+  problemId: v.id("problem"),
 });
 export type InProgressGame = Infer<typeof inProgressDef>;
-export const gamePhaseDef = v.union(
-  v.object({ status: v.literal("NotStarted"), player1: v.id("player") }),
+export const gameDef = v.union(
   inProgressDef,
+  v.object({
+    status: v.literal("NotStarted"),
+    player1: v.id("player"),
+    player2: v.union(v.id("player"), v.null()),
+    problemId: v.union(v.id("problem"), v.null()),
+  }),
+  v.object({
+    status: v.literal("Inputting"),
+    player1: v.id("player"),
+    player2: v.id("player"),
+    gameState: v.id("gameState"),
+    problemId: v.id("problem"),
+  }),
   v.object({
     status: v.literal("InputDone"),
     player1: v.id("player"),
     player2: v.id("player"),
     gameState: v.id("gameState"),
+    problemId: v.id("problem"),
   }),
   v.object({
     status: v.literal("Done"),
@@ -22,5 +36,6 @@ export const gamePhaseDef = v.union(
     player2: v.id("player"),
     gameState: v.id("gameState"),
     testResults: v.id("testResults"),
+    problemId: v.id("problem"),
   })
 );

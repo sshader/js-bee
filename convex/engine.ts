@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, MutationCtx, QueryCtx } from "./functions";
+import { mutation, MutationCtx, QueryCtx } from "./lib/functions";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { applyInput, Input, Operation } from "../common/inputs";
@@ -71,15 +71,14 @@ export async function handleTurn(
   args: { gameId: Id<"game">; playerId: Id<"player">; input: string }
 ) {
   const game = await ctx.db.getX(args.gameId);
-  const phase = game.phase;
-  if (phase.status !== "Inputting") {
+  if (game.status !== "Inputting") {
     throw new Error("Game isn't in the inputting phase");
   }
   const gameStateBefore = await getGameState(ctx, game._id);
   await _handleTurn(
     ctx,
     game._id,
-    phase,
+    game,
     args.playerId,
     parseInput(args.input, gameStateBefore.state.code)
   );
@@ -90,13 +89,13 @@ export async function handleTurn(
     return;
   }
   const nextPlayerId = gameStateAfter.state.isLastPlayerPlayer1
-    ? phase.player2
-    : phase.player1;
+    ? game.player2
+    : game.player1;
   const shouldSkip = gameStateAfter.state.isLastPlayerPlayer1
     ? gameStateAfter.state.player2Skips > 0
     : gameStateAfter.state.player1Skips > 0;
   if (shouldSkip) {
-    await _handleTurn(ctx, game._id, phase, nextPlayerId, { kind: "Skipped" });
+    await _handleTurn(ctx, game._id, game, nextPlayerId, { kind: "Skipped" });
     return;
   }
   const nextPlayer = await ctx.db.getX(nextPlayerId);
@@ -136,13 +135,12 @@ async function _handleTurn(
     state: nextState,
   });
   if (input.kind === "Finish") {
-    await ctx.db.patch(gameId, {
-      phase: {
-        status: "InputDone",
-        player1: phase.player1,
-        player2: phase.player2,
-        gameState: phase.gameState,
-      },
+    await ctx.db.replace(gameId, {
+      status: "InputDone",
+      player1: phase.player1,
+      player2: phase.player2,
+      gameState: phase.gameState,
+      problemId: phase.problemId,
     });
   }
 }
@@ -182,10 +180,10 @@ export const recordResult = mutation({
     if (game === null) {
       throw new Error("Unknown game");
     }
-    if (game.phase.status === "Done") {
+    if (game.status === "Done") {
       return;
     }
-    if (game.phase.status !== "InputDone") {
+    if (game.status !== "InputDone") {
       throw new Error("Phase incorrect");
     }
     console.log(args.testCaseResults);
@@ -193,14 +191,13 @@ export const recordResult = mutation({
       gameId: game._id,
       results: args.testCaseResults,
     });
-    await ctx.db.patch(args.gameId, {
-      phase: {
-        status: "Done",
-        player1: game.phase.player1,
-        player2: game.phase.player2,
-        gameState: game.phase.gameState,
-        testResults: testResults,
-      },
+    await ctx.db.replace(args.gameId, {
+      status: "Done",
+      player1: game.player1,
+      player2: game.player2,
+      gameState: game.gameState,
+      testResults: testResults,
+      problemId: game.problemId,
     });
   },
 });
