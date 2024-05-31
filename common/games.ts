@@ -6,6 +6,7 @@ const inProgressDef = v.object({
   player2: v.id("player"),
   gameState: v.id("gameState"),
   problemId: v.id("problem"),
+  startTimeMs: v.optional(v.number()),
 });
 export type InProgressGame = Infer<typeof inProgressDef>;
 export const gameDef = v.union(

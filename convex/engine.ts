@@ -122,10 +122,15 @@ async function _handleTurn(
   } else if (!isPlayer1Turn && phase.player2 !== playerId) {
     throw new Error("Not current player's turn");
   }
+  const timeOffsetMs =
+    phase.startTimeMs === undefined
+      ? undefined
+      : Date.now() - phase.startTimeMs;
 
   await addInput(ctx, gameId, {
     isPlayer1: isPlayer1Turn,
     operation: input,
+    timeOffsetMs,
   });
   const nextState = applyInput(gameState.state, {
     operation: input,

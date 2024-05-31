@@ -108,6 +108,7 @@ export async function addPlayerToGame(
     player2: playerId,
     gameState,
     problemId: game.problemId,
+    startTimeMs: Date.now(),
   });
 }
 
@@ -144,6 +145,7 @@ export const selectProblem = mutation({
       player2: game.player2,
       gameState,
       problemId: problemId,
+      startTimeMs: Date.now(),
     });
   },
 });

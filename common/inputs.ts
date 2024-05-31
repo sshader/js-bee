@@ -24,6 +24,7 @@ const operationDef = v.union(
 export const inputDef = v.object({
   isPlayer1: v.boolean(),
   operation: operationDef,
+  timeOffsetMs: v.optional(v.number()),
 });
 export type Input = Infer<typeof inputDef>;
 export type Operation = Input["operation"];

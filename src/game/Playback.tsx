@@ -5,21 +5,37 @@ import { wrapInFunction } from "@/lib/ScoreCode";
 import { CodeBlock } from "@/components/CodeBlock";
 import * as Checkbox from "@radix-ui/react-checkbox";
 import { CheckIcon } from "@radix-ui/react-icons";
+import { Slider } from "@/components/ui/slider";
 
 function Playback({ inputs }: { inputs: Array<Input> }) {
   const [frame, setFrame] = useState(0);
   const [gameState, setGameState] = useState<State>(getInitialState());
   const [animate, setAnimate] = useState(true);
+  const defaultDuration = inputs.length * 300;
+  const [durationMs, setDurationMs] = useState(defaultDuration);
   const [showInputs, setShowInputs] = useState(true);
-  const endState = inputs.reduce((g, i) => applyInput(g, i), getInitialState());
+  const rawDuration =
+    inputs.length === 0 ? 1 : inputs.at(-1)?.timeOffsetMs ?? 15 * 1000;
+  const speed = durationMs / rawDuration;
 
   useEffect(() => {
     if (!animate) {
+      const endState = inputs.reduce(
+        (g, i) => applyInput(g, i),
+        getInitialState()
+      );
       setGameState(endState);
       return;
     }
-    console.log(frame, gameState);
-    const advance = setInterval(() => {
+
+    const nextTimeMs =
+      frame === 0 ||
+      inputs[frame].timeOffsetMs === undefined ||
+      inputs[frame - 1].timeOffsetMs === undefined
+        ? 600
+        : inputs[frame].timeOffsetMs! - inputs[frame - 1].timeOffsetMs!;
+    console.log(nextTimeMs);
+    const advance = setTimeout(() => {
       let f = frame;
       let input = inputs[f];
       f = (f + 1) % inputs.length;
@@ -33,9 +49,9 @@ function Playback({ inputs }: { inputs: Array<Input> }) {
           applyInput(f === 0 ? getInitialState() : gameState, input)
         );
       }
-    }, 300);
-    return () => clearInterval(advance);
-  }, [animate, setGameState, frame, setFrame, endState, gameState, inputs]);
+    }, nextTimeMs * speed);
+    return () => clearTimeout(advance);
+  }, [animate, setGameState, frame, setFrame, gameState, inputs, speed]);
   return (
     <div className="flex flex-col">
       <div className="flex">
@@ -56,9 +72,7 @@ function Playback({ inputs }: { inputs: Array<Input> }) {
                 <CheckIcon />
               </Checkbox.Indicator>
             </Checkbox.Root>
-            <label className="Label" htmlFor="c1">
-              Code only
-            </label>
+            <label className="Label">Code only</label>
           </div>
           <div className="flex items-center gap-2">
             <Checkbox.Root
@@ -77,9 +91,23 @@ function Playback({ inputs }: { inputs: Array<Input> }) {
                 <CheckIcon />
               </Checkbox.Indicator>
             </Checkbox.Root>
-            <label className="Label" htmlFor="c1">
-              No animation
-            </label>
+            <label className="Label">No animation</label>
+          </div>
+          <div>
+            <label>Speed</label>
+            <Slider
+              className="w-60 h-4 p-4 rounded border-2 border-solid border-primary disabled:bg-muted"
+              defaultValue={[
+                (-1 * Math.log(durationMs / defaultDuration)) / Math.log(1.2),
+              ]}
+              min={-10}
+              max={10}
+              step={1}
+              disabled={animate === false}
+              onValueChange={(v) => {
+                setDurationMs(defaultDuration * 1.2 ** (-1 * v[0]));
+              }}
+            ></Slider>
           </div>
         </div>
       </div>
