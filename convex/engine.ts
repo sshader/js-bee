@@ -24,8 +24,11 @@ export function parseInput(input: string, code: string): Operation {
     const numSkips = parseInt(input.split(" ")[1] ?? "1");
     return { kind: "Skip", numSkips };
   }
+  if (input === "pass") {
+    return { kind: "Add", input: "" };
+  }
   if (input === "clearline") {
-    const newCursor = Math.max(code.lastIndexOf("\n") - 1, 0);
+    const newCursor = Math.max(code.lastIndexOf("\n"), 0);
     const numDeleted = code.length - newCursor;
     return { kind: "Delete", numDeleted };
   }

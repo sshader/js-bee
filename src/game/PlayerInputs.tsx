@@ -15,6 +15,9 @@ function renderInput(input: Operation | null) {
       if (input.input === " ") {
         return "space";
       }
+      if (input.input === "") {
+        return "pass";
+      }
       if (input.input === "\n") {
         return "\\n";
       }

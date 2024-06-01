@@ -34,7 +34,6 @@ function Playback({ inputs }: { inputs: Array<Input> }) {
       inputs[frame - 1].timeOffsetMs === undefined
         ? 600
         : inputs[frame].timeOffsetMs! - inputs[frame - 1].timeOffsetMs!;
-    console.log(nextTimeMs);
     const advance = setTimeout(() => {
       let f = frame;
       let input = inputs[f];
