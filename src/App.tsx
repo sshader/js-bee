@@ -5,7 +5,7 @@ import ErrorPage from "./ErrorPage";
 import Game, { GameState, Prompt } from "./Game";
 import ProblemEditor from "./ProblemEditor";
 import ScheduleGame from "./ScheduleGame";
-import { Sheet } from "./components/ui/sheet";
+import { Sheet, SheetContent } from "./components/ui/sheet";
 import { DotIcon } from "@radix-ui/react-icons";
 import { useEffect } from "react";
 import Header from "./Header";
@@ -74,10 +74,29 @@ function App() {
         .removeEventListener("change", listener);
   });
   return (
-    <main className="font-mono flex flex-col gap-8 h-[100vh] w-[100vw] overflow-auto p-10">
+    <main className="font-mono flex flex-col h-[100vh] w-[100vw]">
       <Sheet>
-        <RouterProvider router={router} />
+        <div className="p-10 flex flex-col gap-8 h-full w-full overflow-auto">
+          <RouterProvider router={router} />
+        </div>
       </Sheet>
+      <div className="sticky bottom-0 right-0 bg-background p-2">
+        <div className="flex gap-2 items-center">
+          <div>
+            Made by{" "}
+            <Link href="https://github.com/sshader/" target="_blank">
+              Sarah Shader
+            </Link>
+          </div>
+          <DotIcon />
+          <div>
+            Powered by{" "}
+            <Link href="https://www.convex.dev/" target="_blank">
+              Convex
+            </Link>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }
@@ -117,24 +136,6 @@ function Index() {
           </div>
         </div>
       )}
-
-      <div className="absolute bottom-0 right-0 bg-background p-2">
-        <div className="flex gap-2 items-center">
-          <div>
-            Made by{" "}
-            <Link href="https://github.com/sshader/" target="_blank">
-              Sarah Shader
-            </Link>
-          </div>
-          <DotIcon />
-          <div>
-            Powered by{" "}
-            <Link href="https://www.convex.dev/" target="_blank">
-              Convex
-            </Link>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
