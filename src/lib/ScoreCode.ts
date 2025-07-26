@@ -1,6 +1,13 @@
 import { shouldInterruptAfterDeadline } from "quickjs-emscripten";
+import { scorePythonCode, wrapInPythonFunction } from "./ScorePythonCode";
 
-export const wrapInFunction = (body: string) => {
+export const wrapInFunction = (
+  body: string,
+  language: "javascript" | "python"
+) => {
+  if (language === "python") {
+    return wrapInPythonFunction(body);
+  }
   return `function solution(a) {\n\t${body}\n}`;
 };
 
@@ -28,8 +35,12 @@ export const ensureQuickJsReady = async () => {
 
 export const scoreCode = async (
   funcCode: string,
-  testCases: Array<{ args: any; expected: any }>
+  testCases: Array<{ args: any; expected: any }>,
+  language: "javascript" | "python" = "javascript"
 ) => {
+  if (language === "python") {
+    return scorePythonCode(funcCode, testCases);
+  }
   const QuickJS = await ensureQuickJsReady();
   const body = `${funcCode}
   

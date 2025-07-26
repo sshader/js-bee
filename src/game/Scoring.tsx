@@ -17,7 +17,7 @@ export function Scoring({ gameId }: { gameId: Id<"game"> }) {
     <CollapsibleCard header="Input done!" startOpen={true}>
       <div className="flex flex-col gap-2">
         <div>Code submitted:</div>
-        <CodeBlock text={wrapInFunction(scoringInfo.code)} />
+        <CodeBlock text={wrapInFunction(scoringInfo.code, scoringInfo.problem.language || "javascript")} />
         <div>Test cases:</div>
         <CodeBlock
           text={`const testCases = ${JSON.stringify(scoringInfo.problem.testCases, null, 2)}`}
@@ -27,9 +27,11 @@ export function Scoring({ gameId }: { gameId: Id<"game"> }) {
           onSubmit={(e) => {
             e.preventDefault();
             const f = async () => {
+              const language = scoringInfo.problem.language || "javascript";
               const result = await scoreCode(
-                wrapInFunction(scoringInfo.code),
-                scoringInfo.problem.testCases
+                wrapInFunction(scoringInfo.code, language),
+                scoringInfo.problem.testCases,
+                language
               );
               await recordResult({
                 gameId,

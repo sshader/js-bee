@@ -108,11 +108,15 @@ function Game() {
 
         <Prompt
           problemPrompt={gameInfo.problemPrompt}
+          problemLanguage={gameInfo.problemLanguage}
           startOpen={expandSetup}
           game={gameInfo.game}
         />
 
-        <GameState game={gameInfo.game} />
+        <GameState
+          game={gameInfo.game}
+          problemLanguage={gameInfo.problemLanguage}
+        />
       </div>
     </>
   );
@@ -120,19 +124,24 @@ function Game() {
 
 export function Prompt({
   problemPrompt,
+  problemLanguage,
   startOpen,
   game,
 }: {
   problemPrompt: string | null;
+  problemLanguage: "javascript" | "python" | null;
   startOpen: boolean;
   game: Doc<"game">;
 }) {
   const player = useCurrentPlayer();
-  if (problemPrompt !== null) {
+  if (problemPrompt !== null && problemLanguage !== null) {
     return (
       <CollapsibleCard header="Prompt:" startOpen={startOpen}>
         <CodeBlock
-          text={`${problemPrompt}\n\n${wrapInFunction("// your code here")}`}
+          text={`${problemPrompt}\n\n${wrapInFunction(
+            "// your code here",
+            problemLanguage
+          )}`}
         />
       </CollapsibleCard>
     );
@@ -173,7 +182,10 @@ function ProblemSelector({ gameId }: { gameId: Id<"game"> }) {
               });
             }}
           >
-            <div>{p.summary ?? p.prompt.substring(0, 50)}</div>
+            <div className="flex gap-2 items-center">
+              <span>{p.language === "python" ? "(Python)" : "(JS)"}</span>
+              {p.summary ?? p.prompt.substring(0, 50)}
+            </div>
           </Card>
         );
       })}
@@ -198,10 +210,14 @@ function ProblemSelector({ gameId }: { gameId: Id<"game"> }) {
   );
 }
 
-export function GameState({ game }: { game: Doc<"game"> }) {
+export function GameState({
+  game,
+  problemLanguage,
+}: {
+  game: Doc<"game">;
+  problemLanguage: "javascript" | "python";
+}) {
   const player = useCurrentPlayer();
-  const problems = useQuery(api.problems.list) ?? [];
-  const selectProblem = useMutation(api.games.selectProblem);
   switch (game.status) {
     case "NotStarted": {
       if (game.player2 === null) {
@@ -225,12 +241,18 @@ export function GameState({ game }: { game: Doc<"game"> }) {
       if (isPlaying) {
         return <Controls game={game} />;
       }
-      return <SpectatingGame game={game} />;
+      return <SpectatingGame game={game} problemLanguage={problemLanguage} />;
     }
   }
 }
 
-function SpectatingGame({ game }: { game: Doc<"game"> }) {
+function SpectatingGame({
+  game,
+  problemLanguage,
+}: {
+  game: Doc<"game">;
+  problemLanguage: "javascript" | "python";
+}) {
   const player = useCurrentPlayer();
   const result = useQuery(api.games.spectateGameInputs, {
     gameId: game._id,
@@ -242,7 +264,7 @@ function SpectatingGame({ game }: { game: Doc<"game"> }) {
   return (
     <div>
       <ReadOnlyPlayerInputs gameState={result.state} />
-      <CodeBlock text={wrapInFunction(result.state.code)} />
+      <CodeBlock text={wrapInFunction(result.state.code, problemLanguage)} />
     </div>
   );
 }

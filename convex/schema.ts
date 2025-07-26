@@ -8,6 +8,7 @@ import { migrationsTable } from "convex-helpers/server/migrations";
 export const problemValidator = {
   summary: v.optional(v.string()),
   prompt: v.string(),
+  language: v.optional(v.union(v.literal("javascript"), v.literal("python"))),
   testCases: v.array(
     v.object({
       args: v.any(),

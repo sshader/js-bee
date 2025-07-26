@@ -10,6 +10,7 @@ import { SheetTitle } from "./components/ui/sheet";
 import { Label } from "@radix-ui/react-label";
 import { Input } from "./components/ui/input";
 import { Button } from "./components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
 
 function ProblemEditor() {
   const { problemId } = useParams();
@@ -28,6 +29,9 @@ function ProblemEditor() {
 function Inner({ problem }: { problem: Doc<"problem"> }) {
   const [code, setCode] = useState(problem.prompt);
   const [summary, setSummary] = useState(problem.summary);
+  const [language, setLanguage] = useState<"javascript" | "python">(
+    problem.language || "javascript"
+  );
   const [testCases, setTestCases] = useState(
     JSON.stringify(problem.testCases, null, 2)
   );
@@ -53,6 +57,7 @@ function Inner({ problem }: { problem: Doc<"problem"> }) {
                 isPublished: true,
                 prompt: code,
                 summary,
+                language,
                 testCases: parsedTestCases,
               },
             });
@@ -72,11 +77,23 @@ function Inner({ problem }: { problem: Doc<"problem"> }) {
             }}
           />
         </div>
+        <div className="flex gap-2 items-center">
+          <Label>Language:</Label>
+          <Select value={language} onValueChange={(value: "javascript" | "python") => setLanguage(value)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="javascript">JavaScript</SelectItem>
+              <SelectItem value="python">Python</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div>
           <Label>Prompt:</Label>
           <CodeEditor
             value={code}
-            language="js"
+            language={language === "python" ? "python" : "js"}
             onChange={(evn) => setCode(evn.target.value)}
             padding={15}
           />

@@ -103,10 +103,14 @@ function Index() {
               <Instructions />
             </CollapsibleCard>
 
-            <GameState game={gameInfo.game} />
+            <GameState
+              game={gameInfo.game}
+              problemLanguage={gameInfo.problemLanguage}
+            />
 
             <Prompt
               problemPrompt={gameInfo.problemPrompt}
+              problemLanguage={gameInfo.problemLanguage}
               startOpen
               game={gameInfo.game}
             />

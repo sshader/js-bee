@@ -212,6 +212,7 @@ async function getGameInfo(ctx: QueryCtx, gameId: Id<"game">) {
             sessionId: undefined,
           },
     problemPrompt: problem?.prompt ?? null,
+    problemLanguage: problem?.language ?? "javascript",
   };
 }
 

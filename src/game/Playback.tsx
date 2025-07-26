@@ -7,7 +7,13 @@ import * as Checkbox from "@radix-ui/react-checkbox";
 import { CheckIcon } from "@radix-ui/react-icons";
 import { Slider } from "@/components/ui/slider";
 
-function Playback({ inputs }: { inputs: Array<Input> }) {
+function Playback({
+  inputs,
+  problemLanguage,
+}: {
+  inputs: Array<Input>;
+  problemLanguage: "javascript" | "python";
+}) {
   const [frame, setFrame] = useState(0);
   const [gameState, setGameState] = useState<State>(getInitialState());
   const [animate, setAnimate] = useState(true);
@@ -110,7 +116,7 @@ function Playback({ inputs }: { inputs: Array<Input> }) {
           </div>
         </div>
       </div>
-      <CodeBlock text={wrapInFunction(gameState.code)} />
+      <CodeBlock text={wrapInFunction(gameState.code, problemLanguage)} />
     </div>
   );
 }

@@ -47,7 +47,10 @@ export function CompleteGame({ gameId }: { gameId: Id<"game"> }) {
             : `Result: 🤷 ${summaryString} ${numPassed} / ${total}`}
         </CardTitle>
         <div>Code submitted:</div>
-        <Playback inputs={info.inputs.flatMap((i) => i.inputs)} />
+        <Playback
+          inputs={info.inputs.flatMap((i) => i.inputs)}
+          problemLanguage={info.problem.language ?? "javascript"}
+        />
       </Card>
       <CollapsibleCard header="Test cases:" startOpen>
         <CodeBlock text={resultCodeSnippets.join("\n\n")} />

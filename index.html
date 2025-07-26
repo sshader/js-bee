@@ -24,6 +24,18 @@
         window.__QuickJS = q;
       });
     </script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.28.0/full/pyodide.js"></script>
+    <script type="module">
+      async function initPyodide() {
+        try {
+          window.__Pyodide = await loadPyodide();
+          console.log("Pyodide loaded successfully");
+        } catch (error) {
+          console.error("Failed to load Pyodide:", error);
+        }
+      }
+      initPyodide();
+    </script>
     <div id="root" class="dark"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
