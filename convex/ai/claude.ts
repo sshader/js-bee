@@ -11,7 +11,7 @@ const askClaude = async (prompt: string) => {
     temperature: 0.5,
     messages: [{ role: "user", content: prompt }],
   });
-  return msg.content.map((m) => m.text).join("");
+  return msg.content.filter((m) => m.type === "text").map((m) => m.text).join("");
 };
 
 export const { askBot, askBotWrapper } = BotPlayer("claude", askClaude);

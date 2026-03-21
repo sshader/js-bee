@@ -1,5 +1,5 @@
 import { type ClassValue, clsx } from "clsx";
-import { ForwardRefRenderFunction, forwardRef } from "react";
+import { forwardRef } from "react";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -7,23 +7,27 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // forward refs
-export function fr<T = HTMLElement, P = React.HTMLAttributes<T>>(
-  component: ForwardRefRenderFunction<T, P>
+export function fr<T, P = object>(
+  component: (props: P, ref: React.ForwardedRef<T>) => React.ReactNode
 ) {
-  const wrapped = forwardRef(component);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const wrapped = forwardRef(component as any);
   wrapped.displayName = component.name;
   return wrapped;
 }
 
 // styled element
-export function se<
-  T = HTMLElement,
-  P extends React.HTMLAttributes<T> = React.HTMLAttributes<T>
->(Tag: keyof React.ReactHTML, ...classNames: ClassValue[]) {
-  const component = fr<T, P>(({ className, ...props }, ref) => (
-    // @ts-expect-error Too complicated for TypeScript
-    <Tag ref={ref} className={cn(...classNames, className)} {...props} />
-  ));
-  component.displayName = Tag[0].toUpperCase() + Tag.slice(1);
+export function se(
+  Tag: keyof React.JSX.IntrinsicElements,
+  ...classNames: ClassValue[]
+) {
+  const component = forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement> & { href?: string; target?: string }>(
+    ({ className, ...props }, ref) => (
+      // @ts-expect-error Too complicated for TypeScript
+      <Tag ref={ref} className={cn(...classNames, className)} {...props} />
+    )
+  );
+  component.displayName =
+    String(Tag).charAt(0).toUpperCase() + String(Tag).slice(1);
   return component;
 }

@@ -143,7 +143,7 @@ function Inner({
                 </Button>
               </div>
               <DateTimePicker
-                defaultValue={scheduledGame.proposedTime}
+                defaultValue={new Date(scheduledGame.proposedTime)}
                 onAccept={(date) => {
                   if (date !== null) {
                     void updateTime({

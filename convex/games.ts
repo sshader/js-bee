@@ -60,7 +60,7 @@ export const startBotGame = mutation({
       player2: null,
       problemId: problem._id,
     });
-    await joinGame(ctx, { gameId, playerId: bot2 });
+    await addPlayerToGame(ctx, gameId, bot2);
     await ctx.scheduler.runAfter(0, internal.ai.common.takeTurn, {
       gameId,
       playerId: bot1,
