@@ -1,13 +1,12 @@
 import { api } from "../convex/_generated/api";
 import { Doc, Id } from "../convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useCurrentPlayer } from "./lib/PlayerProvider";
 import { Button } from "./components/ui/button";
 import { wrapInFunction } from "./lib/ScoreCode";
 import { Card } from "./components/ui/card";
 import { Link2Icon } from "@radix-ui/react-icons";
-import { CodeBlock } from "./components/CodeBlock";
 import { Skeleton } from "./components/ui/skeleton";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -17,7 +16,10 @@ import { Scoring } from "./game/Scoring";
 import { CompleteGame } from "./game/CompleteGame";
 import { Instructions } from "./game/Instructions";
 import { CollapsibleCard } from "./components/CollapsibleCard";
+import { ProblemDisplay } from "./components/ProblemDisplay";
+import { ProblemLibrary } from "./components/ProblemLibrary";
 import { ReadOnlyPlayerInputs } from "./game/PlayerInputs";
+import { CodeBlock } from "./components/CodeBlock";
 import Header from "./Header";
 
 function Game() {
@@ -134,14 +136,15 @@ export function Prompt({
   game: Doc<"game">;
 }) {
   const player = useCurrentPlayer();
+  const selectProblem = useMutation(api.games.selectProblem);
+
   if (problemPrompt !== null && problemLanguage !== null) {
     return (
       <CollapsibleCard header="Prompt:" startOpen={startOpen}>
-        <CodeBlock
-          text={`${problemPrompt}\n\n${wrapInFunction(
-            "// your code here",
-            problemLanguage
-          )}`}
+        <ProblemDisplay
+          problemId={game.problemId!}
+          problemPrompt={problemPrompt}
+          problemLanguage={problemLanguage}
         />
       </CollapsibleCard>
     );
@@ -156,57 +159,17 @@ export function Prompt({
   }
   return (
     <CollapsibleCard header="Choose problem:" startOpen={startOpen}>
-      <ProblemSelector gameId={game._id} />
-    </CollapsibleCard>
-  );
-}
-
-function ProblemSelector({ gameId }: { gameId: Id<"game"> }) {
-  const player = useCurrentPlayer();
-  const problems = useQuery(api.problems.list) ?? [];
-  const selectProblem = useMutation(api.games.selectProblem);
-  const createProblem = useMutation(api.problems.create);
-  const navigate = useNavigate();
-  return (
-    <div className="flex flex-col gap-2">
-      {problems.map((p) => {
-        return (
-          <Card
-            className="flex gap-2 items-center p-2 w-full justify-between hover:border-secondary cursor-default"
-            key={p._id}
-            onClick={() => {
-              void selectProblem({
-                playerId: player._id,
-                gameId,
-                problemId: p._id,
-              });
-            }}
-          >
-            <div className="flex gap-2 items-center">
-              <span>{p.language === "python" ? "(Python)" : "(JS)"}</span>
-              {p.summary ?? p.prompt.substring(0, 50)}
-            </div>
-          </Card>
-        );
-      })}
-      <Button
-        className="ml-auto mr-auto"
-        onClick={() => {
-          const f = async () => {
-            const problem = await createProblem({
-              prompt:
-                "// Explain your problem here and give an example\nsolution({ a: 1, b: 2 }) // 3",
-              testCases: [{ args: { a: 1, b: 2 }, expected: 3 }],
-              isPublished: false,
-            });
-            navigate(`/problems/${problem._id}`);
-          };
-          void f();
+      <ProblemLibrary
+        mode="select"
+        onSelect={(problemId) => {
+          void selectProblem({
+            playerId: player._id,
+            gameId: game._id,
+            problemId,
+          });
         }}
-      >
-        New problem
-      </Button>
-    </div>
+      />
+    </CollapsibleCard>
   );
 }
 

@@ -13,9 +13,17 @@ export const problemValidator = {
     v.object({
       args: v.any(),
       expected: v.any(),
+      hidden: v.optional(v.boolean()),
     })
   ),
   isPublished: v.boolean(),
+  difficulty: v.optional(
+    v.union(v.literal("easy"), v.literal("medium"), v.literal("hard"))
+  ),
+  tags: v.optional(v.array(v.string())),
+  timeLimit: v.optional(v.number()),
+  description: v.optional(v.string()),
+  starterCode: v.optional(v.string()),
 };
 
 export default defineSchema(

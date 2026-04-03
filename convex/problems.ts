@@ -19,3 +19,31 @@ export const list = query({
     return problems.filter((p) => p.isPublished === true);
   },
 });
+
+export const listAll = query({
+  args: {},
+  handler: async (ctx, _args) => {
+    return await ctx.db.query("problem").collect();
+  },
+});
+
+export const deleteProblem = mutation({
+  args: { id: v.id("problem") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const importProblems = mutation({
+  args: {
+    problems: v.array(v.object(problemValidator)),
+  },
+  handler: async (ctx, args) => {
+    const ids = [];
+    for (const problem of args.problems) {
+      const id = await ctx.db.insert("problem", problem);
+      ids.push(id);
+    }
+    return ids;
+  },
+});

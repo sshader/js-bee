@@ -19,6 +19,7 @@ import { Instructions } from "./game/Instructions";
 import { Skeleton } from "./components/ui/skeleton";
 import { Link } from "./components/typography/link";
 import OngoingGames from "./OngoingGames";
+import { ProblemLibraryPage } from "./ProblemLibraryPage";
 
 const router = createBrowserRouter([
   {
@@ -34,6 +35,11 @@ const router = createBrowserRouter([
   {
     path: "games/:gameId",
     element: <Game />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: "/problems",
+    element: <ProblemLibraryPage />,
     errorElement: <ErrorPage />,
   },
   {

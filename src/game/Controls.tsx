@@ -4,8 +4,9 @@ import { Doc } from "../../convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { InputForm, NoninteractiveInput } from "./PlayerInputs";
 import { useCurrentPlayer } from "@/lib/PlayerProvider";
+import { CountdownTimer } from "./CountdownTimer";
 
-function Controls({ game }: { game: Doc<"game"> }) {
+function Controls({ game, timeLimit }: { game: Doc<"game">; timeLimit?: number }) {
   const player = useCurrentPlayer();
   const result = useQuery(api.games.watchGameWhilePlaying, {
     gameId: game._id,
@@ -22,7 +23,9 @@ function Controls({ game }: { game: Doc<"game"> }) {
 
   if (game.player1 === player._id) {
     return (
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-3">
+        <CountdownTimer durationSeconds={timeLimit ?? 120} />
+        <div className="flex gap-2">
         <InputForm
           gameId={game._id}
           isActive={isCurrentPlayersTurn}
@@ -36,11 +39,14 @@ function Controls({ game }: { game: Doc<"game"> }) {
             playerVariant="secondary"
           />
         </div>
+        </div>
       </div>
     );
   } else {
     return (
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-3">
+        <CountdownTimer durationSeconds={timeLimit ?? 120} />
+        <div className="flex gap-2">
         <div className="flex flex-col gap-2">
           <div className="text-2xl">{`Partner:`}</div>
           <NoninteractiveInput
@@ -54,6 +60,7 @@ function Controls({ game }: { game: Doc<"game"> }) {
           isActive={isCurrentPlayersTurn}
           playerVariant="secondary"
         />
+        </div>
       </div>
     );
   }
