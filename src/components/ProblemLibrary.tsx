@@ -108,8 +108,8 @@ export function ProblemLibrary({
                 const f = async () => {
                   const problem = await createProblem({
                     prompt:
-                      "// Explain your problem here and give an example\nsolution({ a: 1, b: 2 }) // 3",
-                    testCases: [{ args: { a: 1, b: 2 }, expected: 3 }],
+                      "Return the sum of two numbers given as [a, b].",
+                    testCases: [{ args: [1, 2], expected: 3 }],
                     isPublished: false,
                   });
                   navigate(`/problems/${problem._id}`);

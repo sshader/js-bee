@@ -1,0 +1,483 @@
+[
+  {
+    "summary": "Double It",
+    "prompt": "Return the input number multiplied by 2.",
+    "description": "Given a number, return it doubled.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["math", "warmup"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": 3, "expected": 6 },
+      { "args": 0, "expected": 0 },
+      { "args": -5, "expected": -10 },
+      { "args": 100, "expected": 200, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Is Even",
+    "prompt": "Return true if the input number is even, false otherwise.",
+    "description": "Check if a number is even.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["math", "warmup"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": 4, "expected": true },
+      { "args": 7, "expected": false },
+      { "args": 0, "expected": true },
+      { "args": -2, "expected": true, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Absolute Value",
+    "prompt": "Return the absolute value of the input number. Do not use Math.abs.",
+    "description": "Return the absolute value without using built-ins.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["math"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": -5, "expected": 5 },
+      { "args": 3, "expected": 3 },
+      { "args": 0, "expected": 0 },
+      { "args": -100, "expected": 100, "hidden": true }
+    ]
+  },
+  {
+    "summary": "String Length",
+    "prompt": "Return the length of the input string.",
+    "description": "Given a string, return its length.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["strings", "warmup"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": "hello", "expected": 5 },
+      { "args": "", "expected": 0 },
+      { "args": "abc", "expected": 3 },
+      { "args": "a b c", "expected": 5, "hidden": true }
+    ]
+  },
+  {
+    "summary": "First Character",
+    "prompt": "Return the first character of the input string.",
+    "description": "Extract the first character.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["strings"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": "hello", "expected": "h" },
+      { "args": "abc", "expected": "a" },
+      { "args": "Z", "expected": "Z" },
+      { "args": "123", "expected": "1", "hidden": true }
+    ]
+  },
+  {
+    "summary": "Is Positive",
+    "prompt": "Return true if the number is greater than 0, false otherwise.",
+    "description": "Check if a number is positive.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["math", "warmup"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": 5, "expected": true },
+      { "args": -3, "expected": false },
+      { "args": 0, "expected": false },
+      { "args": 0.1, "expected": true, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Reverse String",
+    "prompt": "Return the input string reversed.",
+    "description": "Reverse the characters in a string.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["strings"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": "abc", "expected": "cba" },
+      { "args": "hello", "expected": "olleh" },
+      { "args": "a", "expected": "a" },
+      { "args": "racecar", "expected": "racecar", "hidden": true }
+    ]
+  },
+  {
+    "summary": "To Uppercase",
+    "prompt": "Return the input string converted to uppercase.",
+    "description": "Convert a string to uppercase.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["strings"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": "hello", "expected": "HELLO" },
+      { "args": "abc", "expected": "ABC" },
+      { "args": "HI", "expected": "HI" },
+      { "args": "test 123", "expected": "TEST 123", "hidden": true }
+    ]
+  },
+  {
+    "summary": "Sum of Array",
+    "prompt": "Return the sum of all numbers in the input array.",
+    "description": "Sum the elements of an array.",
+    "language": "javascript",
+    "difficulty": "medium",
+    "tags": ["arrays", "math"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": [1, 2, 3], "expected": 6 },
+      { "args": [10, -5, 3], "expected": 8 },
+      { "args": [], "expected": 0 },
+      { "args": [100], "expected": 100, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Max of Array",
+    "prompt": "Return the largest number in the input array. The array is non-empty.",
+    "description": "Find the maximum element.",
+    "language": "javascript",
+    "difficulty": "medium",
+    "tags": ["arrays", "math"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": [1, 5, 3], "expected": 5 },
+      { "args": [-1, -5, -3], "expected": -1 },
+      { "args": [42], "expected": 42 },
+      { "args": [3, 3, 3], "expected": 3, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Count Vowels",
+    "prompt": "Return the number of vowels (a, e, i, o, u) in the input string. Case insensitive.",
+    "description": "Count the vowels in a string.",
+    "language": "javascript",
+    "difficulty": "medium",
+    "tags": ["strings"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": "hello", "expected": 2 },
+      { "args": "aeiou", "expected": 5 },
+      { "args": "xyz", "expected": 0 },
+      { "args": "APPLE", "expected": 2, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Is Palindrome",
+    "prompt": "Return true if the input string is a palindrome (reads the same forwards and backwards), false otherwise.",
+    "description": "Check if a string is a palindrome.",
+    "language": "javascript",
+    "difficulty": "medium",
+    "tags": ["strings"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": "racecar", "expected": true },
+      { "args": "hello", "expected": false },
+      { "args": "aba", "expected": true },
+      { "args": "a", "expected": true, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Factorial",
+    "prompt": "Return the factorial of the input number (n!). Input is a non-negative integer.",
+    "description": "Calculate n factorial.",
+    "language": "javascript",
+    "difficulty": "medium",
+    "tags": ["math", "recursion"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": 5, "expected": 120 },
+      { "args": 0, "expected": 1 },
+      { "args": 1, "expected": 1 },
+      { "args": 7, "expected": 5040, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Remove Duplicates",
+    "prompt": "Return a new array with duplicates removed, preserving order.",
+    "description": "Remove duplicate elements from an array.",
+    "language": "javascript",
+    "difficulty": "medium",
+    "tags": ["arrays"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": [1, 2, 2, 3], "expected": [1, 2, 3] },
+      { "args": [1, 1, 1], "expected": [1] },
+      { "args": [], "expected": [] },
+      { "args": [5, 3, 5, 3, 1], "expected": [5, 3, 1], "hidden": true }
+    ]
+  },
+  {
+    "summary": "FizzBuzz Single",
+    "prompt": "Given a number: return \"FizzBuzz\" if divisible by both 3 and 5, \"Fizz\" if divisible by 3, \"Buzz\" if divisible by 5, otherwise return the number itself.",
+    "description": "Classic FizzBuzz for a single number.",
+    "language": "javascript",
+    "difficulty": "medium",
+    "tags": ["classic", "conditionals"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": 15, "expected": "FizzBuzz" },
+      { "args": 9, "expected": "Fizz" },
+      { "args": 10, "expected": "Buzz" },
+      { "args": 7, "expected": 7 },
+      { "args": 30, "expected": "FizzBuzz", "hidden": true }
+    ]
+  },
+  {
+    "summary": "Flatten Array",
+    "prompt": "Flatten a nested array one level deep.",
+    "description": "Flatten a nested array by one level.",
+    "language": "javascript",
+    "difficulty": "medium",
+    "tags": ["arrays"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": [[1, 2], [3, 4]], "expected": [1, 2, 3, 4] },
+      { "args": [[1], [2], [3]], "expected": [1, 2, 3] },
+      { "args": [], "expected": [] },
+      { "args": [[1, [2]], [3]], "expected": [1, [2], 3], "hidden": true }
+    ]
+  },
+  {
+    "summary": "Title Case",
+    "prompt": "Capitalize the first letter of each word in the input string.",
+    "description": "Convert a string to title case.",
+    "language": "javascript",
+    "difficulty": "medium",
+    "tags": ["strings"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": "hello world", "expected": "Hello World" },
+      { "args": "foo bar baz", "expected": "Foo Bar Baz" },
+      { "args": "a", "expected": "A" },
+      { "args": "hi there friend", "expected": "Hi There Friend", "hidden": true }
+    ]
+  },
+  {
+    "summary": "Nth Fibonacci",
+    "prompt": "Return the nth Fibonacci number (0-indexed). F(0)=0, F(1)=1, F(n)=F(n-1)+F(n-2).",
+    "description": "Calculate the nth Fibonacci number.",
+    "language": "javascript",
+    "difficulty": "hard",
+    "tags": ["math", "recursion"],
+    "isPublished": true,
+    "timeLimit": 240,
+    "testCases": [
+      { "args": 0, "expected": 0 },
+      { "args": 1, "expected": 1 },
+      { "args": 6, "expected": 8 },
+      { "args": 10, "expected": 55, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Chunk Array",
+    "prompt": "Given [array, size], split the array into chunks of the given size. Return the array of chunks.",
+    "description": "Split an array into chunks of a given size.",
+    "language": "javascript",
+    "difficulty": "hard",
+    "tags": ["arrays"],
+    "isPublished": true,
+    "timeLimit": 240,
+    "testCases": [
+      { "args": [[1, 2, 3, 4], 2], "expected": [[1, 2], [3, 4]] },
+      { "args": [[1, 2, 3, 4, 5], 2], "expected": [[1, 2], [3, 4], [5]] },
+      { "args": [[1], 3], "expected": [[1]] },
+      { "args": [[1, 2, 3, 4, 5, 6], 3], "expected": [[1, 2, 3], [4, 5, 6]], "hidden": true }
+    ]
+  },
+  {
+    "summary": "Caesar Cipher",
+    "prompt": "Given [string, shift], shift each lowercase letter by the shift amount (wrapping around). Non-letters stay the same.",
+    "description": "Implement a Caesar cipher for lowercase letters.",
+    "language": "javascript",
+    "difficulty": "hard",
+    "tags": ["strings", "crypto"],
+    "isPublished": true,
+    "timeLimit": 300,
+    "testCases": [
+      { "args": ["abc", 1], "expected": "bcd" },
+      { "args": ["xyz", 3], "expected": "abc" },
+      { "args": ["hi!", 0], "expected": "hi!" },
+      { "args": ["zoo", 1], "expected": "app", "hidden": true }
+    ]
+  },
+  {
+    "summary": "Run Length Encoding",
+    "prompt": "Compress a string using run-length encoding.",
+    "description": "Implement run-length encoding.",
+    "language": "javascript",
+    "difficulty": "hard",
+    "tags": ["strings"],
+    "isPublished": true,
+    "timeLimit": 300,
+    "testCases": [
+      { "args": "aaabbc", "expected": "3a2b1c" },
+      { "args": "abc", "expected": "1a1b1c" },
+      { "args": "aaa", "expected": "3a" },
+      { "args": "aabbcc", "expected": "2a2b2c", "hidden": true }
+    ]
+  },
+  {
+    "summary": "Most Frequent",
+    "prompt": "Return the element that appears most often in the input array. If tied, return the one that appears first.",
+    "description": "Find the most frequently occurring element.",
+    "language": "javascript",
+    "difficulty": "hard",
+    "tags": ["arrays"],
+    "isPublished": true,
+    "timeLimit": 300,
+    "testCases": [
+      { "args": [1, 2, 2, 3], "expected": 2 },
+      { "args": [1, 1, 2, 2, 3], "expected": 1 },
+      { "args": [5], "expected": 5 },
+      { "args": [3, 3, 1, 1, 2, 3], "expected": 3, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Double It (Python)",
+    "prompt": "Return the input number multiplied by 2.",
+    "description": "Given a number, return it doubled.",
+    "language": "python",
+    "difficulty": "easy",
+    "tags": ["math", "warmup", "python"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": 3, "expected": 6 },
+      { "args": 0, "expected": 0 },
+      { "args": -5, "expected": -10 },
+      { "args": 100, "expected": 200, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Reverse String (Python)",
+    "prompt": "Return the input string reversed.",
+    "description": "Reverse the characters in a string.",
+    "language": "python",
+    "difficulty": "easy",
+    "tags": ["strings", "python"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": "abc", "expected": "cba" },
+      { "args": "hello", "expected": "olleh" },
+      { "args": "a", "expected": "a" },
+      { "args": "racecar", "expected": "racecar", "hidden": true }
+    ]
+  },
+  {
+    "summary": "Sum of Array (Python)",
+    "prompt": "Return the sum of all numbers in the input list.",
+    "description": "Sum the elements of a list.",
+    "language": "python",
+    "difficulty": "medium",
+    "tags": ["arrays", "math", "python"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": [1, 2, 3], "expected": 6 },
+      { "args": [10, -5, 3], "expected": 8 },
+      { "args": [], "expected": 0 },
+      { "args": [100], "expected": 100, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Is Palindrome (Python)",
+    "prompt": "Return True if the input string is a palindrome, False otherwise.",
+    "description": "Check if a string is a palindrome.",
+    "language": "python",
+    "difficulty": "medium",
+    "tags": ["strings", "python"],
+    "isPublished": true,
+    "timeLimit": 180,
+    "testCases": [
+      { "args": "racecar", "expected": true },
+      { "args": "hello", "expected": false },
+      { "args": "aba", "expected": true },
+      { "args": "a", "expected": true, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Fibonacci (Python)",
+    "prompt": "Return the nth Fibonacci number (0-indexed). F(0)=0, F(1)=1.",
+    "description": "Calculate the nth Fibonacci number.",
+    "language": "python",
+    "difficulty": "hard",
+    "tags": ["math", "python"],
+    "isPublished": true,
+    "timeLimit": 240,
+    "testCases": [
+      { "args": 0, "expected": 0 },
+      { "args": 1, "expected": 1 },
+      { "args": 6, "expected": 8 },
+      { "args": 10, "expected": 55, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Word Count",
+    "prompt": "Return the number of words in the input string. Words are separated by spaces. Empty string has 0 words.",
+    "description": "Count words in a string.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["strings"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": "hello world", "expected": 2 },
+      { "args": "one", "expected": 1 },
+      { "args": "", "expected": 0 },
+      { "args": "a b c d", "expected": 4, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Last Element",
+    "prompt": "Return the last element of the input array.",
+    "description": "Get the last element of an array.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["arrays", "warmup"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": [1, 2, 3], "expected": 3 },
+      { "args": ["a", "b"], "expected": "b" },
+      { "args": [42], "expected": 42 },
+      { "args": [10, 20, 30, 40], "expected": 40, "hidden": true }
+    ]
+  },
+  {
+    "summary": "Repeat String",
+    "prompt": "Given [string, n], return the string repeated n times.",
+    "description": "Repeat a string n times.",
+    "language": "javascript",
+    "difficulty": "easy",
+    "tags": ["strings"],
+    "isPublished": true,
+    "timeLimit": 120,
+    "testCases": [
+      { "args": ["ha", 3], "expected": "hahaha" },
+      { "args": ["x", 1], "expected": "x" },
+      { "args": ["ab", 0], "expected": "" },
+      { "args": ["yo", 4], "expected": "yoyoyoyo", "hidden": true }
+    ]
+  }
+]

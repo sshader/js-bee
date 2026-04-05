@@ -39,29 +39,24 @@ export function ProblemDisplay({
         </div>
       )}
 
-      {problem?.description && (
-        <p className="text-sm text-muted-foreground">{problem.description}</p>
-      )}
-
-      <CodeBlock
-        text={`${problemPrompt}\n\n${wrapInFunction(
-          "// your code here",
-          problemLanguage
-        )}`}
-      />
+      <p className="text-sm">{problemPrompt}</p>
 
       {visibleTests.length > 0 && (
         <div>
           <span className="text-sm font-medium">Examples:</span>
           <div className="mt-1 space-y-1">
             {visibleTests.map((tc, i) => (
-              <div key={i} className="text-sm font-mono text-muted-foreground">
+              <div key={i} className="text-sm font-mono">
                 solution({JSON.stringify(tc.args)}) → {JSON.stringify(tc.expected)}
               </div>
             ))}
           </div>
         </div>
       )}
+
+      <CodeBlock
+        text={wrapInFunction("// your code here", problemLanguage)}
+      />
     </div>
   );
 }

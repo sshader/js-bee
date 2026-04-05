@@ -2,7 +2,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { Doc, Id } from "../convex/_generated/dataModel";
-import CodeEditor from "@uiw/react-textarea-code-editor";
 import { useState } from "react";
 import { Skeleton } from "./components/ui/skeleton";
 import { SheetTitle } from "./components/ui/sheet";
@@ -237,11 +236,14 @@ function Inner({ problem }: { problem: Doc<"problem"> }) {
 
         <div>
           <Label>Prompt:</Label>
-          <CodeEditor
+          <p className="text-xs text-muted-foreground mb-1">
+            Describe the task. Examples are shown automatically from test cases.
+          </p>
+          <Textarea
+            placeholder="Return the sum of two numbers given as [a, b]."
             value={code}
-            language={language === "python" ? "python" : "js"}
-            onChange={(evn) => setCode(evn.target.value)}
-            padding={15}
+            onChange={(e) => setCode(e.target.value)}
+            rows={3}
           />
         </div>
 

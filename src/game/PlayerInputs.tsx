@@ -65,7 +65,7 @@ export function NoninteractiveInput({
 }) {
   return (
     <div
-      className={`border-solid rounded-md border-4 p-4 text-4xl text-center min-w-[5em] ${isActive ? `border-${playerVariant}` : "border-muted text-muted"}`}
+      className={`border-solid rounded-md border-4 p-2 sm:p-4 text-2xl sm:text-4xl text-center min-w-[3em] sm:min-w-[5em] ${isActive ? `border-${playerVariant}` : "border-muted text-muted"}`}
     >
       {renderInput(input)}
     </div>

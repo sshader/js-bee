@@ -6,52 +6,17 @@ import { FunctionReference, makeFunctionReference } from "convex/server";
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 
-export const SYSTEM_PROMPT = "You are implementing JavaScript functions";
+export type { Language } from "./botLogic";
+import {
+  type Language,
+  constructPrompt,
+  parseAIAnswer,
+  getNextInputString,
+} from "./botLogic";
 
 export const { runWithRetries, retry } = makeActionRetrier("ai/common:retry", {
   maxFailures: 5,
 });
-
-function constructPrompt(problemPrompt: string, codeSnippet: string) {
-  return `Please finish implementing this JavaScript function based on the following prompt. 
-Please include code for the full function and do not include explanations.
-
-Prompt:
-${problemPrompt}
-
-function solution(a) {
-  ${codeSnippet}
-}
-`;
-}
-
-function parseAIAnswer(rawAnswer: string, codeSnippet: string) {
-  let answer = rawAnswer;
-  const codeBlockBegin = rawAnswer.indexOf("```javascript");
-  const codeBlockEnd = rawAnswer.lastIndexOf("```");
-  if (codeBlockBegin !== -1 && codeBlockEnd !== -1) {
-    answer = rawAnswer
-      .substring(codeBlockBegin + "```javascript".length, codeBlockEnd)
-      .trim();
-  }
-  const functionMatch = /function solution\([a-z]+\) {/.exec(answer);
-  if (functionMatch !== null) {
-    console.log(functionMatch);
-    const funcBegin = functionMatch.index + functionMatch[0].length;
-    const funcEnd = answer.lastIndexOf("}");
-    if (funcBegin !== -1 && funcEnd !== -1) {
-      return answer.substring(funcBegin, funcEnd).trim();
-    }
-  }
-
-  if (
-    answer.replaceAll(/\s/g, "").startsWith(codeSnippet.replaceAll(/\s/g, ""))
-  ) {
-    return answer;
-  }
-
-  return "";
-}
 
 export const recordAnswer = internalMutation({
   args: {
@@ -87,6 +52,7 @@ export const askBotArgs = v.object({
   playerId: v.id("player"),
   prompt: v.string(),
   codeSnippet: v.string(),
+  language: v.union(v.literal("javascript"), v.literal("python")),
 });
 
 export type AskBotArgs = Infer<typeof askBotArgs>;
@@ -106,7 +72,7 @@ export type AskBotArgs = Infer<typeof askBotArgs>;
  */
 export const BotPlayer = (
   botType: string,
-  askBot: (prompt: string) => Promise<string>
+  askBot: (prompt: string, language: Language) => Promise<string>
 ) => {
   const actionName = `ai/${botType}:askBot`;
   const askBotAction = internalAction({
@@ -114,10 +80,14 @@ export const BotPlayer = (
       args: askBotArgs,
     },
     handler: async (ctx, { args }) => {
-      const prompt = constructPrompt(args.prompt, args.codeSnippet);
+      const prompt = constructPrompt(
+        args.prompt,
+        args.codeSnippet,
+        args.language
+      );
 
-      const rawAnswer = await askBot(prompt);
-      const answer = parseAIAnswer(rawAnswer, args.codeSnippet);
+      const rawAnswer = await askBot(prompt, args.language);
+      const answer = parseAIAnswer(rawAnswer, args.codeSnippet, args.language);
       console.log(`Raw answer: ${rawAnswer}`);
       console.log(`Parsed answer: ${answer}`);
       console.log(`Snippet: ${args.codeSnippet}`);
@@ -176,6 +146,7 @@ export const takeTurn = internalMutation({
       throw new Error("Unexpected phase");
     }
     const problem = await ctx.db.getX(game.problemId);
+    const language: Language = problem.language ?? "javascript";
     const gameState = await getGameState(ctx, game._id);
     const originalCode = gameState.state.code;
     const bothBots =
@@ -192,15 +163,23 @@ export const takeTurn = internalMutation({
       }
     }
 
-    const lastInput = await getLastInput(ctx, game._id);
-    if (!args.mustAnswer && lastInput?.operation.kind === "Delete") {
-      // Ask bot, which will call back into this function once it has an answer
+    // Check if the opponent's last move was a delete (clear).
+    // Use the per-player last input from gameState rather than the absolute
+    // last input, so the bot still re-evaluates even after it has taken
+    // its own turn following the opponent's clear.
+    const isPlayer1 = game.player1 === args.playerId;
+    const opponentLastInput = isPlayer1
+      ? gameState.state.lastPlayer2Input
+      : gameState.state.lastPlayer1Input;
+    if (!args.mustAnswer && opponentLastInput?.kind === "Delete") {
+      // Opponent cleared — re-query the LLM for a fresh solution
       await ctx.scheduler.runAfter(0, wrapperName, {
         args: {
           gameId: args.gameId,
           playerId: args.playerId,
           prompt: problem.prompt,
           codeSnippet: originalCode,
+          language,
         },
       });
       return;
@@ -243,6 +222,7 @@ export const takeTurn = internalMutation({
           playerId: args.playerId,
           prompt: problem.prompt,
           codeSnippet: originalCode,
+          language,
         },
       });
       return;
@@ -259,7 +239,8 @@ export const takeTurn = internalMutation({
     const nextInput: string = getNextInputString(
       answer.answer,
       originalCode,
-      bothBots
+      bothBots,
+      language
     );
     console.log(`Next input: '${nextInput}'`);
     return handleTurn(ctx, {
@@ -269,55 +250,6 @@ export const takeTurn = internalMutation({
     });
   },
 });
-
-function getNextInputString(answer: string, code: string, bothBots: boolean) {
-  const codePrefix = bothBots ? code : code.replaceAll(/\s+/g, "");
-  let answerPrefix = "";
-  let i = 0;
-  while (i < answer.length) {
-    if (codePrefix === "") {
-      i = -1;
-      break;
-    }
-    const char = answer[i];
-    if (bothBots) {
-      answerPrefix += char;
-    } else if (!char.match(/\s/)) {
-      answerPrefix += char;
-    }
-    if (answerPrefix === codePrefix) {
-      break;
-    }
-    i += 1;
-  }
-  let nextChar = undefined;
-  const lastChar = code.at(-1);
-  for (let j = i + 1; j < answer.length; j += 1) {
-    const char = answer[j];
-
-    // Don't follow whitespace with whitespace
-    if (!bothBots && lastChar && lastChar.match(/\s/)) {
-      if (!char.match(/\s/)) {
-        nextChar = char;
-        break;
-      }
-    } else {
-      nextChar = char;
-      break;
-    }
-  }
-  let nextInput: string = " ";
-  if (nextChar === undefined) {
-    nextInput = "done";
-  } else if (nextChar === "\n") {
-    nextInput = "\\n";
-  } else if (nextChar === "\t") {
-    nextInput = "\\t";
-  } else {
-    nextInput = nextChar;
-  }
-  return nextInput;
-}
 
 export const getOrCreateBotPlayer = async (
   ctx: MutationCtx,

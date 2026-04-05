@@ -1,16 +1,16 @@
 import { OpenAI } from "openai";
-import { BotPlayer, SYSTEM_PROMPT } from "./common";
+import { BotPlayer, type Language } from "./common";
 
-const askChatGpt = async (prompt: string) => {
+const askChatGpt = async (prompt: string, language: Language) => {
   const openai = new OpenAI();
 
   const response = await openai.chat.completions.create(
     {
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: SYSTEM_PROMPT,
+          content: `You are implementing ${language === "python" ? "Python" : "JavaScript"} functions`,
         },
         { role: "user", content: prompt },
       ],

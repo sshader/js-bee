@@ -59,8 +59,8 @@ function Playback({
   }, [animate, setGameState, frame, setFrame, gameState, inputs, speed]);
   return (
     <div className="flex flex-col">
-      <div className="flex">
-        <div className="flex flex-col gap-2 w-[50%]">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-col gap-2 sm:w-[50%]">
           {showInputs && <ReadOnlyPlayerInputs gameState={gameState} />}
         </div>
         <div className="flex flex-col gap-2">
@@ -101,7 +101,7 @@ function Playback({
           <div>
             <label>Speed</label>
             <Slider
-              className="w-60 h-4 p-4 rounded border-2 border-solid border-primary disabled:bg-muted"
+              className="w-full max-w-60 h-4 p-4 rounded border-2 border-solid border-primary disabled:bg-muted"
               defaultValue={[
                 (-1 * Math.log(durationMs / defaultDuration)) / Math.log(1.2),
               ]}
